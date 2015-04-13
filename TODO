@@ -1,4 +1,8 @@
-CRASHES IF NO CONFIG PRESENT, TOP PRIO FIX
+No longer crashes if there's no config present,
+instead prompts user for data to write to the file
+
+On the downside, this means that it crashes if there is a config present that is in the wrong format
+Probably need to make the config something specific so it's easier to catch errors like that
 
 See what can be done about cleaning up parsing
 Kludgy code to ignore messages from jtv, fix that

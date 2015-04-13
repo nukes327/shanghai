@@ -3,15 +3,29 @@ import json
 
 class Bot:
 
-    def __init__(self):
-        f = open("config.txt")
-        self.serv = f.readline().rstrip('\n')
-        self.port = int(f.readline().rstrip('\n'))
-        self.nick = f.readline().rstrip('\n')
-        self.key  = f.readline().rstrip('\n')
+    def __init__(self, config="config.txt"):
+        try:
+            f = open(config)
+        except:
+            print("Error, config not found")
+            self.serv = input("Server: ")
+            self.port = int(input("Port: "))
+            self.nick = input("Nick: ")
+            self.key = input("Oauth key: ")
+            f = open(config, "w+")
+            f.write(self.serv + "\n")
+            f.write(str(self.port) + "\n")
+            f.write(self.nick + "\n")
+            f.write(self.key + "\n")
+            f.close()
+        else:
+            self.serv = f.readline().rstrip('\n')
+            self.port = int(f.readline().rstrip('\n'))
+            self.nick = f.readline().rstrip('\n')
+            self.key  = f.readline().rstrip('\n')
+            f.close()
         self.users = {}
         self.commands = {}
-        f.close()
         self.loadlist()
 
     def send(self, cmd):
@@ -32,7 +46,7 @@ class Bot:
         print("Connected to channel %s" % (channel))
         print("Loading command list for %s" % (channel))
         try:
-            f = open(channel, "r")
+            f = open(channel)
         except:
             f = open(channel, "w+")
             print("File not found, "
@@ -76,7 +90,7 @@ class Bot:
         """Loads global user list"""
         print("Loading user list")
         try:
-            f = open("userlist.txt", "r")
+            f = open("userlist.txt")
         except:
             f = open("userlist.txt", "w+")
             print("File not found, creating a new userlist.txt")
@@ -100,14 +114,17 @@ class Bot:
 
     def parse(self, data):
         """Parse data for commands"""
+        data = data.rstrip("\r\n")
         data = data.split(" :", maxsplit=2)
-        print (data)
         data[0] = data[0].split(";")
         data[1] = data[1].split(" ")
         msg = data[2]
         user = data[1][0].split("!")[0]
         channel = data[1][2]
         color = data[0][0].split("=")[1]
+
+        print("%s: %s" % (channel, user, msg))
+
         if user not in self.users:
             self.users[user] = {}
             print("User %s added to userlist" % (user))
