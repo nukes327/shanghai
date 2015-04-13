@@ -4,40 +4,42 @@ import json
 class Bot:
     def __init__(self):
         f = open("config.txt")
-        self.serv = str.encode(f.readline().rstrip('\n'))
+        self.serv = f.readline().rstrip('\n')
         self.port = int(f.readline().rstrip('\n'))
-        self.nick = str.encode(f.readline().rstrip('\n'))
-        self.key  = str.encode(f.readline().rstrip('\n'))
+        self.nick = f.readline().rstrip('\n')
+        self.key  = f.readline().rstrip('\n')
         self.users = {}
         self.chanlist = []
         f.close()
+    def send(self, cmd):
+        self.irc.send(str.encode(cmd + "\r\n"))
 
     def connect(self):
         self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.irc.connect((self.serv, self.port))
-        self.irc.send(b"PASS " + self.key + b"\r\n")
-        self.irc.send(b"NICK " + self.nick + b"\r\n")
-        self.irc.send(b"CAP REQ :twitch.tv/tags\r\n")
+        self.send("PASS " + self.key)
+        self.send("NICK " + self.nick)
+        self.send("CAP REQ :twitch.tv/tags")
 
     def join(self, channel):
-        self.irc.send(b"JOIN " + channel + b"\r\n")
-        print("Connected to channel " + bytes.decode(channel))
+        self.send("JOIN " + channel)
+        print("Connected to channel " + channel)
         self.loadlist(channel)
 
     def say(self, msg, channel):
-        self.irc.send(b"PRIVMSG " + channel + b" :" + msg + b"\r\n")
+        self.send("PRIVMSG " + channel + " :" + msg)
 
     def part(self, channel):
-        self.irc.send(b"PART " + channel + b"\r\n")
+        self.send("PART " + channel)
         print("Writing userlist to file...")
         f = open(channel, "w")
         json.dump(self.users, f)
         f.close()
-        self.irc.send(b"QUIT\r\n")
+        self.send("QUIT")
         exit()
 
     def loadlist(self, channel):
-        print("Loading user list for " + bytes.decode(channel))
+        print("Loading user list for " + channel)
         try:
             f = open(channel, "r")
         except:
@@ -53,41 +55,40 @@ class Bot:
         f.close()
 
     def listen(self):
-        data = self.irc.recv(4096)
-        if data.startswith(b"PING"):
-            self.irc.send(b"PONG " + data.split(b" ")[1])
-        if (b"PRIVMSG ") in data and not data.startswith(b":jtv"):
+        data = bytes.decode(self.irc.recv(4096))
+        if data.startswith("PING"):
+            self.send("PONG " + data.split(" ")[1])
+        if ("PRIVMSG ") in data and not data.startswith(":jtv"):
             self.parse(data)
         else:
             pass
 
     def parse(self, data):
-        data = data.split(b" :", maxsplit=2)
+        data = data.split(" :", maxsplit=2)
         print (data)
-        data[0] = data[0].split(b";")
-        data[1] = data[1].split(b" ")
+        data[0] = data[0].split(";")
+        data[1] = data[1].split(" ")
         msg = data[2]
-        user = data[1][0].split(b"!")[0]
+        user = data[1][0].split("!")[0]
         channel = data[1][2]
-        color = data[0][0].split(b"=")[1]
-        if bytes.decode(user) not in self.users:
-            self.users[bytes.decode(user)] = {}
-            print("User " + bytes.decode(user) + " added to userlist")
-        if msg.startswith(b"!"):
-            msg = msg.lstrip(b"!")
-            if msg.startswith(b"part"):
+        color = data[0][0].split("=")[1]
+        if user not in self.users:
+            self.users[user] = {}
+            print("User " + user + " added to userlist")
+        if msg.startswith("!"):
+            msg = msg.lstrip("!")
+            if msg.startswith("part"):
                 self.part(channel)
-            if msg.startswith(b"echo"):
-                self.say(msg.split(b" ",maxsplit=1)[1], channel)
-        elif msg.lower().startswith(b"shanghai"):
-            msg = msg.lower().split(b"shanghai ",maxsplit=1)
-            if msg[1].startswith(b"purge"):
-                self.say(b".timeout " + user + b" 1", channel)
+            if msg.startswith("echo"):
+                self.say(msg.split(" ",maxsplit=1)[1], channel)
+        elif msg.lower().startswith("shanghai"):
+            msg = msg.lower().split("shanghai ",maxsplit=1)
+            if msg[1].startswith("purge"):
+                self.say(".timeout " + user + " 1", channel)
 
 
 shanghai = Bot()
 shanghai.connect()
-shanghai.join(b"#nukes327")
-shanghai.join(b"#soulrider95")
+shanghai.join("#nukes327")
 while True:
     shanghai.listen()
