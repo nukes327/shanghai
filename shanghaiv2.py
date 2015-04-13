@@ -2,6 +2,7 @@ import socket
 import json
 
 class Bot:
+
     def __init__(self):
         f = open("config.txt")
         self.serv = f.readline().rstrip('\n')
@@ -18,21 +19,21 @@ class Bot:
     def connect(self):
         self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.irc.connect((self.serv, self.port))
-        self.send("PASS " + self.key)
-        self.send("NICK " + self.nick)
+        self.send("PASS %s" % (self.key))
+        self.send("NICK %s" % (self.nick))
         self.send("CAP REQ :twitch.tv/tags")
 
     def join(self, channel):
-        self.send("JOIN " + channel)
-        print("Connected to channel " + channel)
+        self.send("JOIN %s" % (channel))
+        print("Connected to channel %s" % (channel))
         self.loadlist(channel)
 
     def say(self, msg, channel):
-        self.send("PRIVMSG " + channel + " :" + msg)
+        self.send("PRIVMSG %s : %s" % (channel, msg))
 
     def part(self, channel):
-        self.send("PART " + channel)
-        print("Writing command list for " + channel + " to file...")
+        self.send("PART %s" % (channel))
+        print("Writing command list for %s to file..." % (channel))
         f = open(channel, "w")
         json.dump(self.commands[channel], f)
         f.close()
@@ -60,12 +61,12 @@ class Bot:
             print("Userlist loaded and ready to go")
         f.close()
 
-        print("Loading command list for " + channel)
+        print("Loading command list for %s" % (channel))
         try:
             f = open(channel, "r")
         except:
             f = open(channel, "w+")
-            print("File not found, creating a new command list for " + channel)
+            print("File not found, creating a new command list for %s" % (channel))
         try:
             self.commands[channel] = json.load(f)
         except:
@@ -79,7 +80,7 @@ class Bot:
         data = bytes.decode(self.irc.recv(4096))
         if data.startswith("PING"):
             self.send("PONG " + data.split(" ")[1])
-        if ("PRIVMSG ") in data and not data.startswith(":jtv"):
+        if ("PRIVMSG ") in data and not data.startswith(":jtv"): #kludgy, fix this
             self.parse(data)
         else:
             pass
@@ -95,7 +96,7 @@ class Bot:
         color = data[0][0].split("=")[1]
         if user not in self.users:
             self.users[user] = {}
-            print("User " + user + " added to userlist")
+            print("User %s added to userlist" % (user))
         if msg.startswith("!"):
             msg = msg.lstrip("!")
             if msg.startswith("part"):
