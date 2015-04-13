@@ -1,0 +1,4 @@
+irc.twitch.tv
+6667
+NICKNAME
+oauth:OAUTHKEY
