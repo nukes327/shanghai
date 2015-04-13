@@ -11,12 +11,14 @@ class Bot:
         self.key  = f.readline().rstrip('\n')
         self.users = {}
         self.commands = {}
-        self.chanlist = []
         f.close()
+
     def send(self, cmd):
+        """Send encoded message to irc socket"""
         self.irc.send(str.encode(cmd + "\r\n"))
 
     def connect(self):
+        """Connect to twitch irc server"""
         self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.irc.connect((self.serv, self.port))
         self.send("PASS %s" % (self.key))
@@ -24,19 +26,42 @@ class Bot:
         self.send("CAP REQ :twitch.tv/tags")
 
     def join(self, channel):
+        """Join and load commands for given channel"""
         self.send("JOIN %s" % (channel))
         print("Connected to channel %s" % (channel))
-        self.loadlist(channel)
+        print("Loading command list for %s" % (channel))
+        try:
+            f = open(channel, "r")
+        except:
+            f = open(channel, "w+")
+            print("File not found,
+                    creating a new command list for %s" % (channel))
+        try:
+            self.commands[channel] = json.load(f)
+        except:
+            print("No command list found, initializing")
+            self.commands[channel] = {}
+        else:
+            print("Command list loaded, ready to go")
+        f.close()
+
 
     def say(self, msg, channel):
+        """Send message to channel"""
         self.send("PRIVMSG %s : %s" % (channel, msg))
 
     def part(self, channel):
+        """Leave channel and save specific commands"""
         self.send("PART %s" % (channel))
         print("Writing command list for %s to file..." % (channel))
         f = open(channel, "w")
         json.dump(self.commands[channel], f)
         f.close()
+
+    def quit(self):
+        """Save all open command sets, quit server, and exit program"""
+        for chan in commands:
+            self.part(chan)
 
         print("Writing userlist to file...")
         f = open("userlist.txt", "w")
@@ -46,7 +71,8 @@ class Bot:
 
         exit()
 
-    def loadlist(self, channel):
+    def loadlist(self):
+        """Loads global user list"""
         print("Loading user list")
         try:
             f = open("userlist.txt", "r")
@@ -61,31 +87,18 @@ class Bot:
             print("Userlist loaded and ready to go")
         f.close()
 
-        print("Loading command list for %s" % (channel))
-        try:
-            f = open(channel, "r")
-        except:
-            f = open(channel, "w+")
-            print("File not found, creating a new command list for %s" % (channel))
-        try:
-            self.commands[channel] = json.load(f)
-        except:
-            print("No command list found, initializing")
-            self.commands[channel] = {}
-        else:
-            print("Command list loaded, ready to go")
-        f.close()
-
     def listen(self):
+        """Respond to PING, call parse if channel message"""
         data = bytes.decode(self.irc.recv(4096))
         if data.startswith("PING"):
             self.send("PONG " + data.split(" ")[1])
-        if ("PRIVMSG ") in data and not data.startswith(":jtv"): #kludgy, fix this
+        if ("PRIVMSG ") in data and not data.startswith(":jtv"):
             self.parse(data)
         else:
             pass
 
     def parse(self, data):
+        """Parse data for commands"""
         data = data.split(" :", maxsplit=2)
         print (data)
         data[0] = data[0].split(";")
