@@ -1,2 +1,4 @@
-Move IRC quit and bot exit to QUIT method from PART,
-add cycle through part on all open channels on quit
+CRASHES IF NO CONFIG PRESENT, TOP PRIO FIX
+
+See what can be done about cleaning up parsing
+Kludgy code to ignore messages from jtv, fix that

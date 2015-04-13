@@ -12,6 +12,7 @@ class Bot:
         self.users = {}
         self.commands = {}
         f.close()
+        self.loadlist()
 
     def send(self, cmd):
         """Send encoded message to irc socket"""
@@ -34,8 +35,8 @@ class Bot:
             f = open(channel, "r")
         except:
             f = open(channel, "w+")
-            print("File not found,
-                    creating a new command list for %s" % (channel))
+            print("File not found, "
+                  "creating a new command list for %s" % (channel))
         try:
             self.commands[channel] = json.load(f)
         except:
@@ -60,7 +61,7 @@ class Bot:
 
     def quit(self):
         """Save all open command sets, quit server, and exit program"""
-        for chan in commands:
+        for chan in self.commands:
             self.part(chan)
 
         print("Writing userlist to file...")
@@ -116,6 +117,8 @@ class Bot:
                 self.part(channel)
             if msg.startswith("echo"):
                 self.say(msg.split(" ",maxsplit=1)[1], channel)
+            if msg.startswith("quit"):
+                self.quit()
         elif msg.lower().startswith("shanghai"):
             msg = msg.lower().split("shanghai ",maxsplit=1)
             if msg[1].startswith("purge"):
