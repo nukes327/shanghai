@@ -1,0 +1,2 @@
+Move IRC quit and bot exit to QUIT method from PART,
+add cycle through part on all open channels on quit

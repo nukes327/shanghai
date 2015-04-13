@@ -9,6 +9,7 @@ class Bot:
         self.nick = f.readline().rstrip('\n')
         self.key  = f.readline().rstrip('\n')
         self.users = {}
+        self.commands = {}
         self.chanlist = []
         f.close()
     def send(self, cmd):
@@ -31,27 +32,47 @@ class Bot:
 
     def part(self, channel):
         self.send("PART " + channel)
-        print("Writing userlist to file...")
+        print("Writing command list for " + channel + " to file...")
         f = open(channel, "w")
+        json.dump(self.commands[channel], f)
+        f.close()
+
+        print("Writing userlist to file...")
+        f = open("userlist.txt", "w")
         json.dump(self.users, f)
         f.close()
         self.send("QUIT")
+
         exit()
 
     def loadlist(self, channel):
-        print("Loading user list for " + channel)
+        print("Loading user list")
         try:
-            f = open(channel, "r")
+            f = open("userlist.txt", "r")
         except:
-            f = open(channel, "a+")
-            f.seek(0)
-            print("File not found, creating...")
+            f = open("userlist.txt", "w+")
+            print("File not found, creating a new userlist.txt")
         try:
             self.users = json.load(f)
         except:
-            print("No user list found, initializing...")
+            print("No userlist found in file, initializing")
         else:
-            print("User list loaded, ready to go")
+            print("Userlist loaded and ready to go")
+        f.close()
+
+        print("Loading command list for " + channel)
+        try:
+            f = open(channel, "r")
+        except:
+            f = open(channel, "w+")
+            print("File not found, creating a new command list for " + channel)
+        try:
+            self.commands[channel] = json.load(f)
+        except:
+            print("No command list found, initializing")
+            self.commands[channel] = {}
+        else:
+            print("Command list loaded, ready to go")
         f.close()
 
     def listen(self):
