@@ -1,7 +1,14 @@
 # Shanghai
 
 An IRC bot I'm building with python 3 as a personal project
+
 Currently only supports connection to twitch.tv irc
+
+May or may not eventually become a full IRC client
+
+
+
+
 
             DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
                     Version 2, December 2004
