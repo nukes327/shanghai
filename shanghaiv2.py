@@ -104,7 +104,8 @@ class Bot:
         f.close()
 
     def addcommand(self, data, channel):
-        pass
+        data = data.split(" ",maxsplit=1)
+        self.commands[channel][data[0]] = data[1]
 
     def listen(self):
         """Respond to PING, call parse if channel message"""
@@ -135,8 +136,11 @@ class Bot:
             print("User %s added to userlist" % (user))
         if msg.startswith("!"):
             msg = msg.lstrip("!")
-            if msg.startswith("add"):
-                self.addcommand(msg.split(" ",maxsplit=1[1]), channel)
+            if msg.split(" ",maxsplit=1)[0] in self.commands[channel]:
+                self.say(self.commands[channel][msg.split(" ",maxsplit=1)[0]],
+                        channel)
+            if msg.startswith("command"):
+                self.addcommand(msg.split(" ",maxsplit=1)[1], channel)
             if msg.startswith("part"):
                 self.part(channel)
             if msg.startswith("echo"):
