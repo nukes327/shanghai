@@ -129,7 +129,10 @@ class Bot:
         if channel is None:
             channel = self.params["chan"]
         data = data.split(" ",maxsplit=1)
-        self.optcoms[channel][data[0]] = data[1]
+        try:
+            self.optcoms[channel][data[0]] = data[1]
+        except:
+            print("Improper syntax, no command added")
 
     def listen(self):
         """Respond to PING, call parse if channel message"""
