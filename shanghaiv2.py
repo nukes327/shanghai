@@ -26,7 +26,8 @@ class Bot:
             self.key  = f.readline().rstrip('\n')
             f.close()
         self.users = {}
-        self.commands = {}
+        self.optcoms = {}
+        self.syscoms = {}
         self.loadlist()
 
     def send(self, cmd):
@@ -53,10 +54,10 @@ class Bot:
             print("File not found, "
                   "creating a new command list for %s" % (channel))
         try:
-            self.commands[channel] = json.load(f)
+            self.optcoms[channel] = json.load(f)
         except:
             print("No command list found, initializing")
-            self.commands[channel] = {}
+            self.optcoms[channel] = {}
         else:
             print("Command list loaded, ready to go")
         f.close()
@@ -71,12 +72,12 @@ class Bot:
         self.send("PART %s" % (channel))
         print("Writing command list for %s to file..." % (channel))
         f = open(channel, "w")
-        json.dump(self.commands[channel], f)
+        json.dump(self.optcoms[channel], f)
         f.close()
 
     def quit(self):
         """Save all open command sets, quit server, and exit program"""
-        for chan in self.commands:
+        for chan in self.optcoms:
             self.part(chan)
 
         print("Writing userlist to file...")
@@ -105,7 +106,7 @@ class Bot:
 
     def addcommand(self, data, channel):
         data = data.split(" ",maxsplit=1)
-        self.commands[channel][data[0]] = data[1]
+        self.optcoms[channel][data[0]] = data[1]
 
     def listen(self):
         """Respond to PING, call parse if channel message"""
@@ -136,8 +137,8 @@ class Bot:
             print("User %s added to userlist" % (user))
         if msg.startswith("!"):
             msg = msg.lstrip("!")
-            if msg.split(" ",maxsplit=1)[0] in self.commands[channel]:
-                self.say(self.commands[channel][msg.split(" ",maxsplit=1)[0]],
+            if msg.split(" ",maxsplit=1)[0] in self.optcoms[channel]:
+                self.say(self.optcoms[channel][msg.split(" ",maxsplit=1)[0]],
                         channel)
             if msg.startswith("command"):
                 self.addcommand(msg.split(" ",maxsplit=1)[1], channel)
