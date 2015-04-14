@@ -1,5 +1,6 @@
 import socket
 import json
+import time
 
 class Bot:
 
@@ -102,6 +103,9 @@ class Bot:
             print("Userlist loaded and ready to go")
         f.close()
 
+    def addcommand(self, data, channel):
+        pass
+
     def listen(self):
         """Respond to PING, call parse if channel message"""
         data = bytes.decode(self.irc.recv(4096))
@@ -123,24 +127,22 @@ class Bot:
         channel = data[1][2]
         color = data[0][0].split("=")[1]
 
-        print("%s: %s" % (channel, user, msg))
+        msgtime = time.localtime()
+        print("[%02i:%02i:%02i] %s: %s" % (msgtime[3], msgtime[4], msgtime[5], user, msg))
 
         if user not in self.users:
             self.users[user] = {}
             print("User %s added to userlist" % (user))
         if msg.startswith("!"):
             msg = msg.lstrip("!")
+            if msg.startswith("add"):
+                self.addcommand(msg.split(" ",maxsplit=1[1]), channel)
             if msg.startswith("part"):
                 self.part(channel)
             if msg.startswith("echo"):
                 self.say(msg.split(" ",maxsplit=1)[1], channel)
             if msg.startswith("quit"):
                 self.quit()
-        elif msg.lower().startswith("shanghai"):
-            msg = msg.lower().split("shanghai ",maxsplit=1)
-            if msg[1].startswith("purge"):
-                self.say(".timeout " + user + " 1", channel)
-
 
 shanghai = Bot()
 shanghai.connect()
