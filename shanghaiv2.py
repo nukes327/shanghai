@@ -1,4 +1,13 @@
 # NOTES
+# (1) While this WILL connect to non-twitch IRC servers currently, don't do it
+#  -- As is it'll pitch a fit if the received data isn't formatted correctly
+#---------
+# TODO
+# (1) Fix the config crashing if it receives invalid JSON
+# (2) Comment the shit out of the code
+# (3) Check for chat moderator status to limit system commands
+# (4) Make parse case-insensitive
+# (5) Clean up error checking rather than having except on anything
 ###############################################################################
 import socket
 import json
@@ -20,6 +29,7 @@ class Bot:
             json.dump(self.config, f, indent=4)
             f.close()
         else:
+            # TODO (1)
             self.config = json.load(f)
             f.close()
         self.users = {}
@@ -28,7 +38,12 @@ class Bot:
                         "part" : self.part,
                         "join" : self.join,
                         "echo" : self.say,
-                        "command" : self.addcommand}
+                        "addcommand" : self.addcommand,
+                        "delcommand" : self.delcommand,
+                        "commands" : self.commandlist,
+                        "np" : self.nowplaying,
+                        "songinfo" : self.songinfo,
+                        "sessioninfo" : self.sessioninfo}
         self.params = {"chan" : "",
                        "msg"  : "",
                        "user" : "",
@@ -70,6 +85,14 @@ class Bot:
             print("Command list loaded, ready to go")
         f.close()
 
+    def ircprint(self, msg=None, user=None):
+        """Print message readably to terminal with timestamp"""
+        if msg is None:
+            msg = self.params["msg"]
+        if user is None:
+            user = self.params["user"]
+        msgtime = time.localtime()
+        print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime, user, msg))
 
     def say(self, msg=None, channel=None):
         """Send message to channel"""
@@ -78,6 +101,7 @@ class Bot:
         if channel is None:
             channel = self.params["chan"]
         self.send("PRIVMSG {} :{}".format(channel, msg))
+        self.ircprint(msg, "shanghai_doll")
 
     def part(self, channel=None):
         """Leave channel and save specific commands"""
@@ -103,7 +127,7 @@ class Bot:
         exit()
 
     def loadlist(self):
-        """Loads global user list"""
+        """Load global user list"""
         print("Loading user list")
         try:
             f = open("userlist.txt")
@@ -119,6 +143,7 @@ class Bot:
         f.close()
 
     def addcommand(self, data=None, channel=None):
+        """Add or change command in optcoms for channel"""
         if data is None:
             data = self.params["msg"]
         if channel is None:
@@ -128,6 +153,36 @@ class Bot:
             self.optcoms[channel][data[0]] = data[1]
         except:
             print("Improper syntax, no command added")
+
+    def delcommand(self, data=None, channel=None):
+        """Delete a command from optcoms for channel"""
+        if data is None:
+            data = self.params["msg"]
+        if channel is None:
+            channel = self.params["chan"]
+        data = data.split(" ")[0]
+        try:
+            self.optcoms[channel].pop(data)
+        except KeyError:
+            print("Command not present")
+        except IndexError:
+            print("Somebody fucked the input")
+    
+    def commandlist(self, channel=None):
+        """Pastebin a command list for channel"""
+        pass
+
+    def nowplaying(self):
+        """Send now playing info for osu"""
+        pass
+
+    def songinfo(self):
+        """Send song info for osu"""
+        pass
+
+    def sessioninfo(self):
+        """Send current stream session info"""
+        pass
 
     def listen(self):
         """Respond to PING, call parse if channel message"""
@@ -141,6 +196,7 @@ class Bot:
 
     def parse(self, data):
         """Parse data for commands"""
+        # TODO (5)
         data = data.rstrip("\r\n")
         data = data.split(" :", maxsplit=2)
         data[0] = data[0].split(";")
@@ -149,11 +205,13 @@ class Bot:
         self.params["user"] = data[1][0].split("!")[0]
         self.params["chan"] = data[1][2]
         self.params["color"] = data[0][0].split("=")[1]
+        # TODO (3)
 
-        msgtime = time.localtime()
-        print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
-                                                                   self.params["user"],
-                                                                   self.params["msg"]))
+        self.ircprint()
+        #msgtime = time.localtime()
+        #print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
+        #                                                           self.params["user"],
+        #                                                           self.params["msg"]))
 
         if self.params["user"] not in self.users:
             self.users[self.params["user"]] = {}
