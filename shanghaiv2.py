@@ -9,23 +9,18 @@ class Bot:
     def __init__(self, config="config.txt"):
         try:
             f = open(config)
-        except:
+        except FileNotFoundError:
             print("Error, config not found")
-            self.serv = input("Server: ")
-            self.port = int(input("Port: "))
-            self.nick = input("Nick: ")
-            self.key = input("Oauth key: ")
+            self.config["server"] = input("Server: ")
+            self.config["port"] = int(input("Port: "))
+            self.config["nick"] = input("Nick: ")
+            self.config["key"] = input("Twitch oauth key: ")
+
             f = open(config, "w+")
-            f.write(self.serv + "\n")
-            f.write(str(self.port) + "\n")
-            f.write(self.nick + "\n")
-            f.write(self.key + "\n")
+            json.dump(self.config, f, indent=4)
             f.close()
         else:
-            self.serv = f.readline().rstrip('\n')
-            self.port = int(f.readline().rstrip('\n'))
-            self.nick = f.readline().rstrip('\n')
-            self.key  = f.readline().rstrip('\n')
+            self.config = json.load(f)
             f.close()
         self.users = {}
         self.optcoms = {}
@@ -43,29 +38,29 @@ class Bot:
 
     def send(self, cmd):
         """Send encoded message to irc socket"""
-        self.irc.send(str.encode("%s\r\n" % cmd))
+        self.irc.send(str.encode("{}\r\n".format(cmd)))
 
     def connect(self):
         """Connect to twitch irc server"""
         self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.irc.connect((self.serv, self.port))
-        self.send("PASS %s" % (self.key))
-        self.send("NICK %s" % (self.nick))
+        self.irc.connect((self.config["server"], self.config["port"]))
+        self.send("PASS {}".format(self.config["key"]))
+        self.send("NICK {}".format(self.config["nick"]))
         self.send("CAP REQ :twitch.tv/tags")
 
     def join(self, channel=None):
         """Join and load commands for given channel"""
         if channel is None:
-            channel = "#%s" % self.params["user"]
-        self.send("JOIN %s" % (channel))
-        print("Connected to channel %s" % (channel))
-        print("Loading command list for %s" % (channel))
+            channel = "#{}".format(self.params["user"])
+        self.send("JOIN {}".format(channel))
+        print("Connected to channel {}".format(channel))
+        print("Loading command list for {}".format(channel))
         try:
             f = open(channel)
-        except:
+        except FileNotFoundError:
             f = open(channel, "w+")
             print("File not found, "
-                  "creating a new command list for %s" % (channel))
+                  "creating a new command list for {}".format(channel))
         try:
             self.optcoms[channel] = json.load(f)
         except:
@@ -82,16 +77,16 @@ class Bot:
             msg = self.params["msg"]
         if channel is None:
             channel = self.params["chan"]
-        self.send("PRIVMSG %s :%s" % (channel, msg))
+        self.send("PRIVMSG {} :{}".format(channel, msg))
 
     def part(self, channel=None):
         """Leave channel and save specific commands"""
         if channel is None:
             channel = self.params["chan"]
-        self.send("PART %s" % (channel))
-        print("Writing command list for %s to file..." % (channel))
+        self.send("PART {}".format(channel))
+        print("Writing command list for {} to file...".format(channel))
         f = open(channel, "w")
-        json.dump(self.optcoms[channel], f)
+        json.dump(self.optcoms[channel], f, indent=4)
         f.close()
 
     def quit(self):
@@ -101,7 +96,7 @@ class Bot:
 
         print("Writing userlist to file...")
         f = open("userlist.txt", "w")
-        json.dump(self.users, f)
+        json.dump(self.users, f, indent=4)
         f.close()
         self.send("QUIT")
 
@@ -112,7 +107,7 @@ class Bot:
         print("Loading user list")
         try:
             f = open("userlist.txt")
-        except:
+        except FileNotFoundError:
             f = open("userlist.txt", "w+")
             print("File not found, creating a new userlist.txt")
         try:
@@ -156,8 +151,9 @@ class Bot:
         self.params["color"] = data[0][0].split("=")[1]
 
         msgtime = time.localtime()
-        print("[%02i:%02i:%02i] %s: %s" % (msgtime[3], msgtime[4], msgtime[5],
-                                           self.params["user"], self.params["msg"]))
+        print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
+                                                                   self.params["user"],
+                                                                   self.params["msg"]))
 
         if self.params["user"] not in self.users:
             self.users[self.params["user"]] = {}
@@ -177,4 +173,7 @@ shanghai = Bot()
 shanghai.connect()
 shanghai.join("#nukes327")
 while True:
-    shanghai.listen()
+    try:
+        shanghai.listen()
+    except KeyboardInterrupt:
+        shanghai.quit()
