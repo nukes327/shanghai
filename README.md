@@ -1,6 +1,6 @@
 # Shanghai
 
-An IRC bot I'm building with python 3.4.3 as a personal project
+An IRC bot I'm building with python 3.4 as a personal project
 
 Currently only supports connection to twitch.tv irc
 
