@@ -1,6 +1,20 @@
 # NOTES
 # (1) While this WILL connect to non-twitch IRC servers currently, don't do it
 #  -- As is it'll pitch a fit if the received data isn't formatted correctly
+#
+# (2) Very important information, but this is subject to change:
+#  -- Sending CAP REQ :twitch.tv/tags to the twitch IRC server toggles
+#  -- IRCv3 tags being sent from the server. The format is as follows:
+#  -- @color=#0000FF;emotes=;subscriber=0;turbo=0;user_type=mod(...)
+#  -- (...) :nukes327!nukes327@nukes327.tmi.twitch.tv PRIVMSG #nukes327 :Msg
+#
+#  -- color is the user's nickname color in twitch webirc
+#  -- emotes contains the emote ID, and the location of the emote within the msg
+#  --   this is empty if there are no emotes in the message
+#  -- subscriber is 0 unless the user is subscribed to the channel
+#  -- turbo is 0 unless the user is paying for Twitch turbo
+#  -- user_type can be staff, admin, global_mod, or mod
+#  --   users are blank and broadcaster is blank or mod if they modded themself
 #---------
 # TODO
 # (1) Fix the config crashing if it receives invalid JSON
@@ -8,6 +22,7 @@
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
 # (5) Clean up error checking rather than having except on anything
+# (6) Ask user in the future if they want to generate a new oauth key
 ###############################################################################
 import socket
 import json
@@ -19,12 +34,14 @@ class Bot:
         try:
             f = open(config)
         except FileNotFoundError:
+            #File wasn't found, initialize all values
             print("Error, config not found")
             self.config["server"] = input("Server: ")
             self.config["port"] = int(input("Port: "))
             self.config["nick"] = input("Nick: ")
-            self.config["key"] = input("Twitch oauth key: ")
+            self.config["key"] = input("Twitch oauth key: ") # TODO (6)
 
+            #Create file with given name, dump JSON to file
             f = open(config, "w+")
             json.dump(self.config, f, indent=4)
             f.close()
@@ -33,7 +50,11 @@ class Bot:
             self.config = json.load(f)
             f.close()
         self.users = {}
+
+        #Loaded later with any channel-specific commands
         self.optcoms = {}
+
+        #Used to call methods from irc messages
         self.syscoms = {"quit" : self.quit,
                         "part" : self.part,
                         "join" : self.join,
@@ -44,11 +65,14 @@ class Bot:
                         "np" : self.nowplaying,
                         "songinfo" : self.songinfo,
                         "sessioninfo" : self.sessioninfo}
+
+        #Contains all data on any message received to pass between methods
         self.params = {"chan" : "",
                        "msg"  : "",
                        "user" : "",
                        "color" : "",
                        "mod" : False}
+
         self.loadlist()
 
     def send(self, cmd):
@@ -61,7 +85,7 @@ class Bot:
         self.irc.connect((self.config["server"], self.config["port"]))
         self.send("PASS {}".format(self.config["key"]))
         self.send("NICK {}".format(self.config["nick"]))
-        self.send("CAP REQ :twitch.tv/tags")
+        self.send("CAP REQ :twitch.tv/tags") # NOTES (2)
 
     def join(self, channel=None):
         """Join and load commands for given channel"""
