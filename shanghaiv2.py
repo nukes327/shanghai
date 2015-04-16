@@ -157,7 +157,9 @@ class Bot:
 
     def quit(self):
         """Save all open command sets, quit server, and exit program"""
-        for chan in self.optcoms:
+        #You can't iterate over the dict itself because part pops the values
+        #And you can't iterate the dict's keys because that returns another damned dict
+        for chan in list(self.optcoms.keys()):
             self.part(chan)
 
         print("Writing userlist to file...")
