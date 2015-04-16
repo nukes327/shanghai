@@ -25,7 +25,7 @@
 # (6) Ask user in the future if they want to generate a new oauth key
 # (7) Fix invalid data kludge
 # (8) Prevent adding commands with the same name as system commands
-###############################################################################
+################################################################################
 import socket
 import json
 import time
@@ -127,7 +127,9 @@ class Bot:
         if user is None:
             user = self.params["user"]
         msgtime = time.localtime()
-        print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime, user, msg))
+        print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
+                                                                   user,
+                                                                   msg))
 
     def say(self, msg=None, channel=None):
         """Send message to channel"""
@@ -293,7 +295,8 @@ class Bot:
             if command in self.syscoms:
                 self.syscoms[command]()
             elif command in self.optcoms[self.params["chan"]]:
-                self.say(self.optcoms[self.params["chan"]][command], self.params["chan"])
+                self.say(self.optcoms[self.params["chan"]][command],
+                         self.params["chan"])
 
 
 shanghai = Bot()
