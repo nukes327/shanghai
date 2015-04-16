@@ -21,8 +21,10 @@
 # (2) Comment the shit out of the code
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
-# (5) Clean up error checking rather than having except on anything
+# (5) Clean up error checking so it checks for specific errors
 # (6) Ask user in the future if they want to generate a new oauth key
+# (7) Fix invalid data kludge
+# (8) Prevent adding commands with the same name as system commands
 ###############################################################################
 import socket
 import json
@@ -77,6 +79,7 @@ class Bot:
 
     def send(self, cmd):
         """Send encoded message to irc socket"""
+        #Encode to bytes on send
         self.irc.send(str.encode("{}\r\n".format(cmd)))
 
     def connect(self):
@@ -89,17 +92,25 @@ class Bot:
 
     def join(self, channel=None):
         """Join and load commands for given channel"""
+
+        #If a user sends !join, join their channel
         if channel is None:
             channel = "#{}".format(self.params["user"])
+
+
         self.send("JOIN {}".format(channel))
         print("Connected to channel {}".format(channel))
         print("Loading command list for {}".format(channel))
+
+        #Open command file or create a blank file if missing
         try:
             f = open(channel)
         except FileNotFoundError:
             f = open(channel, "w+")
             print("File not found, "
                   "creating a new command list for {}".format(channel))
+
+        #Loads the JSON for the channel-specific commands 
         try:
             self.optcoms[channel] = json.load(f)
         except:
@@ -132,10 +143,15 @@ class Bot:
         if channel is None:
             channel = self.params["chan"]
         self.send("PART {}".format(channel))
+
+        #Saves the channel's commands to the channel's file
         print("Writing command list for {} to file...".format(channel))
         f = open(channel, "w")
         json.dump(self.optcoms[channel], f, indent=4)
         f.close()
+
+        #Remove the channel from the channel list
+        self.optcoms.pop(channel)
 
     def quit(self):
         """Save all open command sets, quit server, and exit program"""
@@ -153,11 +169,15 @@ class Bot:
     def loadlist(self):
         """Load global user list"""
         print("Loading user list")
+        
+        #Opens the global userlist, or creates a new one if not found
         try:
             f = open("userlist.txt")
         except FileNotFoundError:
             f = open("userlist.txt", "w+")
             print("File not found, creating a new userlist.txt")
+            
+        #Loads the userlist from the file
         try:
             self.users = json.load(f)
         except:
@@ -172,7 +192,12 @@ class Bot:
             data = self.params["msg"]
         if channel is None:
             channel = self.params["chan"]
+            
+        #Get the command to add
         data = data.split(" ",maxsplit=1)
+
+        # TODO (8)
+        #Add the command to the channel command list
         try:
             self.optcoms[channel][data[0]] = data[1]
         except:
@@ -184,7 +209,11 @@ class Bot:
             data = self.params["msg"]
         if channel is None:
             channel = self.params["chan"]
+
+        #Get the command to remove
         data = data.split(" ")[0]
+
+        #Remove the command from the channel command list
         try:
             self.optcoms[channel].pop(data)
         except KeyError:
@@ -210,9 +239,15 @@ class Bot:
 
     def listen(self):
         """Respond to PING, call parse if channel message"""
+
+        #Decode data on receive to work with strings
         data = bytes.decode(self.irc.recv(4096))
+
+        #Respond to server PINGs to stay connected
         if data.startswith("PING"):
             self.send("PONG " + data.split(" ")[1])
+
+        #If there's a PRIVMSG parse the data TODO (7)
         if ("PRIVMSG ") in data and not data.startswith(":jtv"):
             self.parse(data)
         else:
@@ -220,36 +255,46 @@ class Bot:
 
     def parse(self, data):
         """Parse data for commands"""
-        # TODO (5)
+        # TODO (4)
+
+        #Strip carriage return and newline, and split up the data
         data = data.rstrip("\r\n")
         data = data.split(" :", maxsplit=2)
         data[0] = data[0].split(";")
         data[1] = data[1].split(" ")
+
+        #Store the data so it's usable
         self.params["msg"] = data[2]
         self.params["user"] = data[1][0].split("!")[0]
         self.params["chan"] = data[1][2]
         self.params["color"] = data[0][0].split("=")[1]
         # TODO (3)
-
+        
         self.ircprint()
-        #msgtime = time.localtime()
-        #print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
-        #                                                           self.params["user"],
-        #                                                           self.params["msg"]))
 
+        #Add the user to the userlist if they're not present already
         if self.params["user"] not in self.users:
             self.users[self.params["user"]] = {}
             print("User %s added to userlist" % (self.params["user"]))
+
+        #Only check for commands if the message starts with an !
         if self.params["msg"].startswith("!"):
+            
+            #Snag the actual command to compare
             command = self.params["msg"].split(" ",maxsplit=1)[0].lstrip("!")
+
+            #Attempt to set command args (msg), or give it a blank string
             try:
                 self.params["msg"] = self.params["msg"].split(" ",maxsplit=1)[1]
             except:
                 self.params["msg"] = ""
+
+            #Compare to system commands first, and then channel commands after
             if command in self.syscoms:
                 self.syscoms[command]()
             elif command in self.optcoms[self.params["chan"]]:
                 self.say(self.optcoms[self.params["chan"]][command], self.params["chan"])
+
 
 shanghai = Bot()
 shanghai.connect()
