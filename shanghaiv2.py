@@ -26,8 +26,7 @@
 # Recent Changes:
 #   The regex I'm using now means that it won't fuck up if it receives
 #   a PRIVMSG that it doesn't like the format of
-#   IN THEORY, this also means that it should be able to connect to
-#   any server now, but I don't have it sending the proper info yet
+#   This means the bot can now connect to any server it gets the info for
 ################################################################################
 
 import socket
@@ -38,6 +37,7 @@ import re
 class Bot:
 
     def __init__(self, config="config.txt"):
+        self.config = {}
         try:
             f = open(config)
         except FileNotFoundError:
@@ -46,7 +46,7 @@ class Bot:
             self.config["server"] = input("Server: ")
             self.config["port"] = int(input("Port: "))
             self.config["nick"] = input("Nick: ")
-            self.config["key"] = input("Twitch oauth key: ") # TODO (6)
+            self.config["pass"] = input("Server pass: ") # TODO (6)
 
             #Create file with given name, dump JSON to file
             f = open(config, "w+")
@@ -90,7 +90,7 @@ class Bot:
          \s*?                    #Lose any extra whitespace
          :                       #Start of standard IRC message
          (?P<user>[^!]*)         #Get the user's nick
-         \S*?\s*?                #Lose extra, and trailing whitespace
+         !\S*?\s*?               #Lose extra, and trailing whitespace
          PRIVMSG                 #We only want to match a PRIVMSG
          \s*?                    #Lose whitespace again
          (?P<chan>\S*)           #Grab the channel the message was to
@@ -115,8 +115,10 @@ class Bot:
         """Connect to twitch irc server"""
         self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.irc.connect((self.config["server"], self.config["port"]))
-        self.send("PASS {}".format(self.config["key"]))
+        if self.config["pass"]:
+            self.send("PASS {}".format(self.config["pass"]))
         self.send("NICK {}".format(self.config["nick"]))
+        self.send("USER {0} {0} {0} :{0}".format(self.config["nick"]))
         self.send("CAP REQ :twitch.tv/tags") # NOTES (2)
 
     def join(self, channel=None):
