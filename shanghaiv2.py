@@ -18,17 +18,22 @@
 #---------
 # TODO
 # (1) Fix the config crashing if it receives invalid JSON
-# (2) Comment the shit out of the code
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
 # (6) Ask user in the future if they want to generate a new oauth key
-# (7) Fix invalid data kludge
-# (8) Prevent adding commands with the same name as system commands
+#---------
+# Recent Changes:
+#   The regex I'm using now means that it won't fuck up if it receives
+#   a PRIVMSG that it doesn't like the format of
+#   IN THEORY, this also means that it should be able to connect to
+#   any server now, but I don't have it sending the proper info yet
 ################################################################################
+
 import socket
 import json
 import time
+import re
 
 class Bot:
 
@@ -68,13 +73,37 @@ class Bot:
                         "songinfo" : self.songinfo,
                         "sessioninfo" : self.sessioninfo}
 
-        #Contains all data on any message received to pass between methods
-        self.params = {"chan" : "",
-                       "msg"  : "",
-                       "user" : "",
-                       "color" : "",
-                       "mod" : False}
+        #Put the channel message regex here
+        self.msplit = re.compile(r"""
+         (?P<tags>               #Put all the twitch IRCv3 tags in to a group
+         @color=
+         (?P<color>[^;]*);       #Set Color group to color value
+         emotes=
+         (?P<emotes>[^;]*);      #Set Emotes group to emotes value
+         subscriber=
+         (?P<sub>[^;]*);         #Set Sub group to subscriber value
+         turbo=
+         (?P<turbo>[^;]*);       #Set Turbo group to turbo value
+         user_type=
+         (?P<type>\S*?)          #Set Type group to user_type value
+         )?                      #Make Twitch IRCv3 tags optional
+         \s*?                    #Lose any extra whitespace
+         :                       #Start of standard IRC message
+         (?P<user>[^!]*)         #Get the user's nick
+         \S*?\s*?                #Lose extra, and trailing whitespace
+         PRIVMSG                 #We only want to match a PRIVMSG
+         \s*?                    #Lose whitespace again
+         (?P<chan>\S*)           #Grab the channel the message was to
+         \s*?                    #Lose more whitespace
+         :(?P<msg>[^\r\n]*)      #Message is whatever is left
+        """, re.VERBOSE | re.IGNORECASE)  #Ignore the case just in case
 
+        #A match object used for regex comparison to decide what to do with data
+        self.match = None
+
+        #Message used as default for some method calls
+        self.message = ""
+        
         self.loadlist()
 
     def send(self, cmd):
@@ -95,7 +124,7 @@ class Bot:
 
         #If a user sends !join, join their channel
         if channel is None:
-            channel = "#{}".format(self.params["user"])
+            channel = "#{}".format(self.match.group('user'))
 
 
         self.send("JOIN {}".format(channel))
@@ -123,9 +152,9 @@ class Bot:
     def ircprint(self, msg=None, user=None):
         """Print message readably to terminal with timestamp"""
         if msg is None:
-            msg = self.params["msg"]
+            msg = self.match.group('msg')
         if user is None:
-            user = self.params["user"]
+            user = self.match.group('user')
         msgtime = time.localtime()
         print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
                                                                    user,
@@ -134,16 +163,16 @@ class Bot:
     def say(self, msg=None, channel=None):
         """Send message to channel"""
         if msg is None:
-            msg = self.params["msg"]
+            msg = self.message
         if channel is None:
-            channel = self.params["chan"]
+            channel = self.match.group('chan')
         self.send("PRIVMSG {} :{}".format(channel, msg))
         self.ircprint(msg, "shanghai_doll")
 
     def part(self, channel=None):
         """Leave channel and save specific commands"""
         if channel is None:
-            channel = self.params["chan"]
+            channel = self.match.group('chan')
         self.send("PART {}".format(channel))
 
         #Saves the channel's commands to the channel's file
@@ -193,26 +222,28 @@ class Bot:
     def addcommand(self, data=None, channel=None):
         """Add or change command in optcoms for channel"""
         if data is None:
-            data = self.params["msg"]
+            data = self.message
         if channel is None:
-            channel = self.params["chan"]
+            channel = self.match.group('chan')
             
         #Get the command to add
         data = data.split(" ",maxsplit=1)
 
-        # TODO (8)
         #Add the command to the channel command list
-        try:
-            self.optcoms[channel][data[0]] = data[1]
-        except:
-            print("Improper syntax, no command added")
+        if data[0] not in self.syscoms:
+            try:
+                self.optcoms[channel][data[0]] = data[1]
+            except:
+                print("Improper syntax, no command added")
+        else:
+            print("Command exists as a system command, ignored")
 
     def delcommand(self, data=None, channel=None):
         """Delete a command from optcoms for channel"""
         if data is None:
-            data = self.params["msg"]
+            data = self.message
         if channel is None:
-            channel = self.params["chan"]
+            channel = self.match.group('chan')
 
         #Get the command to remove
         data = data.split(" ")[0]
@@ -251,54 +282,46 @@ class Bot:
         if data.startswith("PING"):
             self.send("PONG " + data.split(" ")[1])
 
-        #If there's a PRIVMSG parse the data TODO (7)
-        if ("PRIVMSG ") in data and not data.startswith(":jtv"):
-            self.parse(data)
+        #If there's a PRIVMSG parse the data
+        self.match = self.msplit.search(data)
+        if self.match:
+            self.parse()
         else:
             pass
 
-    def parse(self, data):
+    def parse(self, data=None):
         """Parse data for commands"""
         # TODO (4)
-
-        #Strip carriage return and newline, and split up the data
-        data = data.rstrip("\r\n")
-        data = data.split(" :", maxsplit=2)
-        data[0] = data[0].split(";")
-        data[1] = data[1].split(" ")
-
-        #Store the data so it's usable
-        self.params["msg"] = data[2]
-        self.params["user"] = data[1][0].split("!")[0]
-        self.params["chan"] = data[1][2]
-        self.params["color"] = data[0][0].split("=")[1]
         # TODO (3)
+        #Cut down on line length
+        user = self.match.group('user')
+        chan = self.match.group('chan')
+        msg = self.match.group('msg')
         
         self.ircprint()
 
         #Add the user to the userlist if they're not present already
-        if self.params["user"] not in self.users:
-            self.users[self.params["user"]] = {}
-            print("User %s added to userlist" % (self.params["user"]))
+        if user not in self.users:
+            self.users[user] = {}
+            print("User {} added to userlist".format(user))
 
         #Only check for commands if the message starts with an !
-        if self.params["msg"].startswith("!"):
+        if msg.startswith("!"):
             
             #Snag the actual command to compare
-            command = self.params["msg"].split(" ",maxsplit=1)[0].lstrip("!")
+            command = msg.split(" ",maxsplit=1)[0].lstrip("!")
 
             #Attempt to set command args (msg), or give it a blank string
             try:
-                self.params["msg"] = self.params["msg"].split(" ",maxsplit=1)[1]
+                self.message = msg.split(" ",maxsplit=1)[1]
             except:
-                self.params["msg"] = ""
+                self.message = ""
 
             #Compare to system commands first, and then channel commands after
             if command in self.syscoms:
                 self.syscoms[command]()
-            elif command in self.optcoms[self.params["chan"]]:
-                self.say(self.optcoms[self.params["chan"]][command],
-                         self.params["chan"])
+            elif command in self.optcoms[chan]:
+                self.say(self.optcoms[chan][command], chan)
 
 
 shanghai = Bot()
