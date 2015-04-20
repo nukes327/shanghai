@@ -1,8 +1,5 @@
 # NOTES
-# (1) While this WILL connect to non-twitch IRC servers currently, don't do it
-#  -- As is it'll pitch a fit if the received data isn't formatted correctly
-#
-# (2) Very important information, but this is subject to change:
+# (1) Very important information, but this is subject to change:
 #  -- Sending CAP REQ :twitch.tv/tags to the twitch IRC server toggles
 #  -- IRCv3 tags being sent from the server. The format is as follows:
 #  -- @color=#0000FF;emotes=;subscriber=0;turbo=0;user_type=mod(...)
@@ -18,6 +15,7 @@
 #---------
 # TODO
 # (1) Fix the config crashing if it receives invalid JSON
+# (2) Regex works barely. Still catches too much bad data, looking in to fixes
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
@@ -74,6 +72,7 @@ class Bot:
                         "sessioninfo" : self.sessioninfo}
 
         #Put the channel message regex here
+        # TODO (2)
         self.msplit = re.compile(r"""
          (?P<tags>               #Put all the twitch IRCv3 tags in to a group
          @color=
