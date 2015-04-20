@@ -69,7 +69,8 @@ class Bot:
                         "commands" : self.commandlist,
                         "np" : self.nowplaying,
                         "songinfo" : self.songinfo,
-                        "sessioninfo" : self.sessioninfo}
+                        "sessioninfo" : self.sessioninfo,
+                        "help" : self.commandhelp}
 
         #Put the channel message regex here
         # TODO (2)
@@ -258,8 +259,32 @@ class Bot:
             print("Somebody fucked the input")
     
     def commandlist(self, channel=None):
-        """Pastebin a command list for channel"""
-        pass
+        """Prints a command list to the channel"""
+        if channel is None:
+            channel = self.match.group('chan')
+        buf = "Current system commands are: "
+        for command in self.syscoms.keys():
+            buf += command + ", "
+        self.say(buf, channel)
+        buf = "Current commands for this channel are: "
+        for command in self.optcoms[channel].keys():
+            buf += command + ", "
+        self.say(buf, channel)
+
+    def commandhelp(self, data=None, channel=None):
+        """Sends docstring for requested command"""
+        if data is None:
+            data = self.message
+        if channel is None:
+            channel = self.match.group('chan')
+
+        #Make sure only checking for one command
+        data = data.split(" ")[0]
+
+        try:
+            self.say(self.syscoms[data].__doc__, channel)
+        except:
+            print("Command not present")
 
     def nowplaying(self):
         """Send now playing info for osu"""
