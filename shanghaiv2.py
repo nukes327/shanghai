@@ -348,13 +348,3 @@ class Bot:
                 self.syscoms[command]()
             elif command in self.optcoms[chan]:
                 self.say(self.optcoms[chan][command], chan)
-
-
-shanghai = Bot()
-shanghai.connect()
-shanghai.join("#nukes327")
-while True:
-    try:
-        shanghai.listen()
-    except KeyboardInterrupt:
-        shanghai.quit()
