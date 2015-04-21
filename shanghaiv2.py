@@ -281,10 +281,12 @@ class Bot:
         #Make sure only checking for one command
         data = data.split(" ")[0]
 
-        try:
-            self.say(self.syscoms[data].__doc__, channel)
-        except:
-            print("Command not present")
+        self.say(self.syscoms[data].__doc__, channel)
+
+        #try:
+        #    self.say(self.syscoms[data].__doc__, channel)
+        #except:
+        #    print("Command not present")
 
     def nowplaying(self):
         """Send now playing info for osu"""
