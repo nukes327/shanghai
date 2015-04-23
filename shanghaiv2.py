@@ -32,7 +32,12 @@ import socket
 import json
 import time
 import re
-import requests
+try:
+    from requests import requests
+except ImportError:
+    print("Failed to import requests")
+    exit()
+
 
 class Bot:
 
@@ -104,7 +109,7 @@ class Bot:
         self.linkscan = re.compile(r"\b[^. ]+\.\S[^ \n\r]+")
 
         #Regex to find title in page text
-        self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<Title>[\s\S]*?)\</title\>")
+        self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<title>[\s\S]*?)\</title\>")
 
         #A match object used for regex comparison to decide what to do with data
         self.match = None
@@ -332,12 +337,12 @@ class Bot:
         chan = self.match.group('chan')
         msg = self.match.group('msg')
 
+        self.ircprint()
+
         # TODO (7)
         if self.linkscan.search(msg):
             r = requests.get(self.linkscan.search(msg).group())
-            self.say(self.pagetitle.search(r.text).group('Title'), chan)
-        
-        self.ircprint()
+            self.say(self.pagetitle.search(r.text).group('title'), chan)
 
         #Add the user to the userlist if they're not present already
         if user not in self.users:
