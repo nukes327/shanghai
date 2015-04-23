@@ -20,6 +20,7 @@
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
 # (6) Ask user in the future if they want to generate a new oauth key
+# (7) Fix link scan. Needs moar error checking
 #---------
 # Recent Changes:
 #   The regex I'm using now means that it won't fuck up if it receives
@@ -31,6 +32,7 @@ import socket
 import json
 import time
 import re
+import requests
 
 class Bot:
 
@@ -98,6 +100,12 @@ class Bot:
          :(?P<msg>[^\r\n]*)      #Message is whatever is left
         """, re.VERBOSE | re.IGNORECASE)  #Ignore the case just in case
 
+        #Regex to scan a message for links
+        self.linkscan = re.compile(r"\b[^. ]+\.\S[^ \n\r]+")
+
+        #Regex to find title in page text
+        self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<Title>[\s\S]*?)\</title\>")
+
         #A match object used for regex comparison to decide what to do with data
         self.match = None
 
@@ -119,7 +127,7 @@ class Bot:
             self.send("PASS {}".format(self.config["pass"]))
         self.send("NICK {}".format(self.config["nick"]))
         self.send("USER {0} {0} {0} :{0}".format(self.config["nick"]))
-        self.send("CAP REQ :twitch.tv/tags") # NOTES (2)
+        self.send("CAP REQ :twitch.tv/tags") # NOTES (1)
 
     def join(self, channel=None):
         """Join and load commands for given channel"""
@@ -323,6 +331,11 @@ class Bot:
         user = self.match.group('user')
         chan = self.match.group('chan')
         msg = self.match.group('msg')
+
+        # TODO (7)
+        if self.linkscan.search(msg):
+            r = requests.get(self.linkscan.search(msg).group())
+            self.say(self.pagetitle.search(r.text).group('Title'), chan)
         
         self.ircprint()
 
