@@ -107,7 +107,7 @@ class Bot:
         """, re.VERBOSE | re.IGNORECASE)  #Ignore the case just in case
 
         #Regex to scan a message for links
-        self.linkscan = re.compile(r"\b[^. ]+\.\S[^ \n\r]+")
+        self.linksearch = re.compile(r"\b[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
 
         #Regex to find title in page text
         self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<title>[\s\S]*?)\</title\>")
@@ -320,6 +320,14 @@ class Bot:
         """Send current stream session info"""
         pass
 
+    def linkscan(self, link):
+        """Handle a link"""
+        r = requests.get(link, headers={"Accept-Encoding": "deflate"})
+        if "html" in r.headers["content-type"]:
+            self.say(self.pagetitle.search(r.text).group('title'), self.match.group('chan'))
+        else:
+            self.say(r.headers["content-type"], self.match.group('chan'))
+
     def listen(self):
         """Respond to PING, call parse if channel message"""
 
@@ -349,9 +357,14 @@ class Bot:
         self.ircprint()
 
         # TODO (7)
-        #if self.linkscan.search(msg):
-        #    r = requests.get(self.linkscan.search(msg).group())
-        #    self.say(self.pagetitle.search(r.text).group('title'), chan)
+        if self.linksearch.search(msg):
+            print(self.linksearch.search(msg).group())
+            self.linkscan(self.linksearch.search(msg).group())
+            #r = requests.get(self.linkscan.search(msg).group(), headers={'Accept-Encoding': 'deflate'})
+            #if "html" in r.headers["content-type"]:
+            #    self.say(self.pagetitle.search(r.text).group('title'), chan)
+            #else:
+            #    self.say(r.headers["content-type"], chan)
 
         #Add the user to the userlist if they're not present already
         if user not in self.users:
