@@ -32,6 +32,7 @@ import socket
 import json
 import time
 import re
+import codecs
 try:
     from requests import requests
 except ImportError:
@@ -301,6 +302,14 @@ class Bot:
 
     def nowplaying(self):
         """Send now playing info for osu"""
+        #try:
+        #    f = codecs.open("C:\\Program Files (x86)\\OBS\\nowplaying.txt", encoding="utf-8")
+        #except FileNotFoundError:
+        #    print("File not found.")
+        #except:
+        #    print("Something went wrong")
+        #else:
+        #    self.say(f.readline(), self.match.group('chan'))
         pass
 
     def songinfo(self):
@@ -340,9 +349,9 @@ class Bot:
         self.ircprint()
 
         # TODO (7)
-        if self.linkscan.search(msg):
-            r = requests.get(self.linkscan.search(msg).group())
-            self.say(self.pagetitle.search(r.text).group('title'), chan)
+        #if self.linkscan.search(msg):
+        #    r = requests.get(self.linkscan.search(msg).group())
+        #    self.say(self.pagetitle.search(r.text).group('title'), chan)
 
         #Add the user to the userlist if they're not present already
         if user not in self.users:
