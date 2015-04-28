@@ -107,7 +107,7 @@ class Bot:
         """, re.VERBOSE | re.IGNORECASE)  #Ignore the case just in case
 
         #Regex to scan a message for links
-        self.linksearch = re.compile(r"\b[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
+        self.links = re.compile(r"\b[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
 
         #Regex to find title in page text
         self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<title>[\s\S]*?)\</title\>")
@@ -357,14 +357,9 @@ class Bot:
         self.ircprint()
 
         # TODO (7)
-        if self.linksearch.search(msg):
-            print(self.linksearch.search(msg).group())
-            self.linkscan(self.linksearch.search(msg).group())
-            #r = requests.get(self.linkscan.search(msg).group(), headers={'Accept-Encoding': 'deflate'})
-            #if "html" in r.headers["content-type"]:
-            #    self.say(self.pagetitle.search(r.text).group('title'), chan)
-            #else:
-            #    self.say(r.headers["content-type"], chan)
+        if self.links.search(msg):
+            print(self.links.search(msg).group())
+            self.linkscan(self.links.search(msg).group())
 
         #Add the user to the userlist if they're not present already
         if user not in self.users:
