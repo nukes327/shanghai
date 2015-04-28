@@ -33,12 +33,15 @@ import json
 import time
 import re
 import codecs
+import ssl
 try:
     from requests import requests
 except ImportError:
-    print("Failed to import requests")
-    exit()
-
+    try:
+        import requests
+    except ImportError:
+        print("Failed to import requests")
+        exit()
 
 class Bot:
 
@@ -53,6 +56,7 @@ class Bot:
             self.config["port"] = int(input("Port: "))
             self.config["nick"] = input("Nick: ")
             self.config["pass"] = input("Server pass: ") # TODO (6)
+            self.config["ssl"] = bool(input("SSL? True or False: "))
 
             #Create file with given name, dump JSON to file
             f = open(config, "w+")
@@ -127,8 +131,12 @@ class Bot:
 
     def connect(self):
         """Connect to twitch irc server"""
-        self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.irc.connect((self.config["server"], self.config["port"]))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((self.config["server"], self.config["port"]))
+        if self.config["ssl"]:
+            self.irc = ssl.wrap_socket(s)
+        else:
+            self.irc = s
         if self.config["pass"]:
             self.send("PASS {}".format(self.config["pass"]))
         self.send("NICK {}".format(self.config["nick"]))
