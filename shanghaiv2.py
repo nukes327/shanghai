@@ -328,13 +328,47 @@ class Bot:
         """Send current stream session info"""
         pass
 
+    def sizeconvert(self, size=0):
+        size_name = ("B", "KB", "MB", "GB")
+        i = 0
+        while size >= 1024:
+            size >>= 10
+            i += 1
+        try:
+            return str(size) + size_name[i]
+        except IndexError:
+            return "What the fuck are you linking a file so big for"
+        
+
     def linkscan(self, link):
         """Handle a link"""
-        r = requests.get(link, headers={"Accept-Encoding": "deflate"})
-        if "html" in r.headers["content-type"]:
-            self.say(self.pagetitle.search(r.text).group('title'), self.match.group('chan'))
-        else:
-            self.say(r.headers["content-type"], self.match.group('chan'))
+        try:
+            r = requests.get(link, timeout=1, stream=True,
+                             headers={"Accept-Encoding": "deflate"})
+        except requests.exceptions.SSLError:
+            r = requests.get(link, timeout=1, stream=True,
+                             headers={"Accept-Encoding": "deflate"},
+                             verify=False)
+        except HTTPError:
+            print("Invalid HTTP response")
+        except TimeOut:
+            print("Request timed out")
+        except ConnectionError:
+            print("Connection error")
+        if r:
+            if "html" in r.headers["content-type"]:
+                msg = "[title] "
+                msg += self.pagetitle.search(r.text).group('title')
+                self.say(msg, self.match.group('chan'))
+            else:
+                msg = "[" + r.headers["content-type"] + "] - "
+                try:
+                    msg += self.sizeconvert(int(r.headers["content-length"]))
+                except KeyError:
+                    print("No content-length present")
+                
+                self.say(msg, self.match.group('chan'))
+            r.close()
 
     def listen(self):
         """Respond to PING, call parse if channel message"""
