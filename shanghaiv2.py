@@ -111,7 +111,7 @@ class Bot:
         """, re.VERBOSE | re.IGNORECASE)  #Ignore the case just in case
 
         #Regex to scan a message for links
-        self.links = re.compile(r"\b[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
+        self.links = re.compile(r"\bhttps?://[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
 
         #Regex to find title in page text
         self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<title>[\s\S]*?)\</title\>")
@@ -358,8 +358,12 @@ class Bot:
         if r:
             if "html" in r.headers["content-type"]:
                 msg = "[title] "
-                msg += self.pagetitle.search(r.text).group('title')
-                self.say(msg, self.match.group('chan'))
+                try:
+                    msg += self.pagetitle.search(r.text).group('title')
+                except AttributeError:
+                    self.say("No page title found", self.match.group('chan'))
+                else:
+                    self.say(msg, self.match.group('chan'))
             else:
                 msg = "[" + r.headers["content-type"] + "] - "
                 try:
