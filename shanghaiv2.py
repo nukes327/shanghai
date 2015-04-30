@@ -90,12 +90,16 @@ class Bot:
          (?P<tags>               #Put all the twitch IRCv3 tags in to a group
          @color=
          (?P<color>[^;]*);       #Set Color group to color value
+         display-name=
+         (?P<display>[^;]*);     #Set Display group to display name
          emotes=
          (?P<emotes>[^;]*);      #Set Emotes group to emotes value
          subscriber=
          (?P<sub>[^;]*);         #Set Sub group to subscriber value
          turbo=
          (?P<turbo>[^;]*);       #Set Turbo group to turbo value
+         user-type=
+         (?P<wtftwitch>[^;]*);   #Set WTFTwitch group to SECOND USER VALUE
          user_type=
          (?P<type>\S*?)          #Set Type group to user_type value
          )?                      #Make Twitch IRCv3 tags optional
@@ -114,7 +118,7 @@ class Bot:
         self.links = re.compile(r"\bhttps?://[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
 
         #Regex to find title in page text
-        self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<title>[\s\S]*?)\</title\>")
+        self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<title>[\s\S]*?)\</title\>", re.MULTILINE)
 
         #A match object used for regex comparison to decide what to do with data
         self.match = None
@@ -365,7 +369,7 @@ class Bot:
                 else:
                     self.say(msg, self.match.group('chan'))
             else:
-                msg = "[" + r.headers["content-type"] + "] - "
+                msg = "[{}] - ".format(r.headers["content-type"])
                 try:
                     msg += self.sizeconvert(int(r.headers["content-length"]))
                 except KeyError:
