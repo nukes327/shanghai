@@ -152,7 +152,8 @@ class Bot:
 
         #If a user sends !join, join their channel
         if channel is None:
-            channel = "#{}".format(self.match.group('user'))
+            channel = self.message
+            #channel = "#{}".format(self.match.group('user'))
 
 
         self.send("JOIN {}".format(channel))
@@ -216,16 +217,20 @@ class Bot:
         """Save all open command sets, quit server, and exit program"""
         #You can't iterate over the dict itself because part pops the values
         #And you can't iterate the dict's keys because that returns another damned dict
-        for chan in list(self.optcoms.keys()):
-            self.part(chan)
+        if (self.match.group('user') == 'nukes327'):
+            for chan in list(self.optcoms.keys()):
+                self.part(chan)
 
-        print("Writing userlist to file...")
-        f = open("userlist.txt", "w")
-        json.dump(self.users, f, indent=4)
-        f.close()
-        self.send("QUIT")
+            print("Writing userlist to file...")
+            f = open("userlist.txt", "w")
+            json.dump(self.users, f, indent=4)
+            f.close()
+            self.send("QUIT")
 
-        exit()
+            exit()
+        else:
+            self.say("Nope", self.match.group('chan'))
+
 
     def loadlist(self):
         """Load global user list"""
@@ -353,7 +358,7 @@ class Bot:
             r = requests.get(link, timeout=1, stream=True,
                              headers={"Accept-Encoding": "deflate"},
                              verify=False)
-        except HTTPError:
+        except requests.exceptions.HTTPError:
             print("Invalid HTTP response")
         except TimeOut:
             print("Request timed out")
@@ -407,7 +412,7 @@ class Bot:
         self.ircprint()
 
         # TODO (7)
-        if self.links.search(msg):
+        if self.links.search(msg) and (user != "shanghai_doll"):
             print(self.links.search(msg).group())
             self.linkscan(self.links.search(msg).group())
 
