@@ -6,7 +6,7 @@
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
-# (7) Fix link scan. Needs moar error checking
+# (6) Fix link scan. Needs moar error checking
 #---------
 # Recent Changes:
 #   I've given up on *specialized* twitch support for the time being
@@ -48,6 +48,7 @@ class Bot:
             self.config["nick"] = input("Nick: ")
             self.config["pass"] = input("Server pass: ")
             self.config["ssl"] = bool(input("SSL? True or False: ")) # TODO (2)
+            self.config["prefix"] = input("Command prefix: ")
 
             #Create file with given name, dump JSON to file
             f = open(config, "w+")
@@ -264,9 +265,10 @@ class Bot:
             buf += command + ", "
         self.say(buf, channel)
         buf = "Current commands for this channel are: "
-        for command in sorted(self.optcoms[channel].keys()):
-            buf += command + ", "
-        self.say(buf, channel)
+        if len(list(self.optcoms[channel].keys())):
+            for command in sorted(self.optcoms[channel].keys()):
+                buf += command + ", "
+            self.say(buf, channel)
 
     def commandhelp(self, data=None, channel=None):
         """Sends docstring for requested command"""
@@ -281,9 +283,10 @@ class Bot:
         try:
             self.say(self.syscoms[data].__doc__, channel)
         except KeyError:
-            self.say("Command not present", channel)
+            self.say(self.commandhelp.__doc__, channel)
 
     def sizeconvert(self, size=0):
+        """Convert a Byte size to something readable"""
         size_name = ("B", "KB", "MB", "GB")
         i = 0
         while size >= 1024:
@@ -348,8 +351,8 @@ class Bot:
 
     def parse(self, data=None):
         """Parse data for commands"""
-        # TODO (4)
         # TODO (3)
+        # TODO (4)
         #Cut down on line length
         user = self.match.group('user')
         chan = self.match.group('chan')
@@ -357,7 +360,7 @@ class Bot:
 
         self.ircprint()
 
-        # TODO (7)
+        # TODO (6)
         if self.links.search(msg) and (user != self.config["nick"]):
             print(self.links.search(msg).group())
             self.linkscan(self.links.search(msg).group())
@@ -368,10 +371,10 @@ class Bot:
             print("User {} added to userlist".format(user))
 
         #Only check for commands if the message starts with an !
-        if msg.startswith("!"):
+        if msg.startswith(self.config["prefix"]):
             
             #Snag the actual command to compare
-            command = msg.split(" ",maxsplit=1)[0].lstrip("!")
+            command = msg.split(" ",maxsplit=1)[0].lstrip(self.config["prefix"])
 
             #Attempt to set command args (msg), or give it a blank string
             try:
