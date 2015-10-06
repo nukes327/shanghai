@@ -1,31 +1,17 @@
 # NOTES
-# (1) Very important information, but this is subject to change:
-#  -- Sending CAP REQ :twitch.tv/tags to the twitch IRC server toggles
-#  -- IRCv3 tags being sent from the server. The format is as follows:
-#  -- @color=#0000FF;emotes=;subscriber=0;turbo=0;user_type=mod(...)
-#  -- (...) :nukes327!nukes327@nukes327.tmi.twitch.tv PRIVMSG #nukes327 :Msg
-#
-#  -- color is the user's nickname color in twitch webirc
-#  -- emotes contains the emote ID, and the location of the emote within the msg
-#  --   this is empty if there are no emotes in the message
-#  -- subscriber is 0 unless the user is subscribed to the channel
-#  -- turbo is 0 unless the user is paying for Twitch turbo
-#  -- user_type can be staff, admin, global_mod, or mod
-#  --   users are blank and broadcaster is blank or mod if they modded themself
 #---------
 # TODO
 # (1) Fix the config crashing if it receives invalid JSON
-# (2) Regex works barely. Still catches too much bad data, looking in to fixes
+# (2) Figure out SASL connection to a server
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
-# (6) Ask user in the future if they want to generate a new oauth key
 # (7) Fix link scan. Needs moar error checking
 #---------
 # Recent Changes:
-#   The regex I'm using now means that it won't fuck up if it receives
-#   a PRIVMSG that it doesn't like the format of
-#   This means the bot can now connect to any server it gets the info for
+#   I've given up on *specialized* twitch support for the time being
+#     This really just means I've ditched the IRCv3 twitch till they finish it
+#   Moved to BeautifulSoup for title parse instead of a regex
 ################################################################################
 
 import socket
@@ -34,7 +20,11 @@ import time
 import re
 import codecs
 import ssl
-from bs4 import BeautifulSoup
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    print("Failed to import BeautifulSoup, are you sure it's installed?")
+    exit()
 try:
     from requests import requests
 except ImportError:
@@ -56,8 +46,8 @@ class Bot:
             self.config["server"] = input("Server: ")
             self.config["port"] = int(input("Port: "))
             self.config["nick"] = input("Nick: ")
-            self.config["pass"] = input("Server pass: ") # TODO (6)
-            self.config["ssl"] = bool(input("SSL? True or False: "))
+            self.config["pass"] = input("Server pass: ")
+            self.config["ssl"] = bool(input("SSL? True or False: ")) # TODO (2)
 
             #Create file with given name, dump JSON to file
             f = open(config, "w+")
@@ -80,31 +70,10 @@ class Bot:
                         "addcommand" : self.addcommand,
                         "delcommand" : self.delcommand,
                         "commands" : self.commandlist,
-                        "np" : self.nowplaying,
-                        "songinfo" : self.songinfo,
-                        "sessioninfo" : self.sessioninfo,
                         "help" : self.commandhelp}
 
         #Put the channel message regex here
-        # TODO (2)
         self.msplit = re.compile(r"""
-         (?P<tags>               #Put all the twitch IRCv3 tags in to a group
-         @color=
-         (?P<color>[^;]*);       #Set Color group to color value
-         display-name=
-         (?P<display>[^;]*);     #Set Display group to display name
-         emotes=
-         (?P<emotes>[^;]*);      #Set Emotes group to emotes value
-         subscriber=
-         (?P<sub>[^;]*);         #Set Sub group to subscriber value
-         turbo=
-         (?P<turbo>[^;]*);       #Set Turbo group to turbo value
-         user-type=
-         (?P<wtftwitch>[^;]*);   #Set WTFTwitch group to SECOND USER VALUE
-         user_type=
-         (?P<type>\S*?)          #Set Type group to user_type value
-         )?                      #Make Twitch IRCv3 tags optional
-         \s*?                    #Lose any extra whitespace
          :                       #Start of standard IRC message
          (?P<user>[^!]*)         #Get the user's nick
          !\S*?\s*?               #Lose extra, and trailing whitespace
@@ -117,9 +86,6 @@ class Bot:
 
         #Regex to scan a message for links
         self.links = re.compile(r"\bhttps?://[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
-
-        #Regex to find title in page text
-        self.pagetitle = re.compile(r"\<title\b[^>]*\>\s*(?P<title>[\s\S]*?)\</title\>", re.MULTILINE)
 
         #A match object used for regex comparison to decide what to do with data
         self.match = None
@@ -135,7 +101,7 @@ class Bot:
         self.irc.send(str.encode("{}\r\n".format(cmd)))
 
     def connect(self):
-        """Connect to twitch irc server"""
+        """Connect to given irc server"""
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.config["server"], self.config["port"]))
         if self.config["ssl"]:
@@ -146,7 +112,6 @@ class Bot:
             self.send("PASS {}".format(self.config["pass"]))
         self.send("NICK {}".format(self.config["nick"]))
         self.send("USER {0} {0} {0} :{0}".format(self.config["nick"]))
-        self.send("CAP REQ :twitch.tv/tags") # NOTES (1)
 
     def join(self, channel=None):
         """Join and load commands for given channel"""
@@ -295,11 +260,11 @@ class Bot:
         if channel is None:
             channel = self.match.group('chan')
         buf = "Current system commands are: "
-        for command in self.syscoms.keys():
+        for command in sorted(self.syscoms.keys()):
             buf += command + ", "
         self.say(buf, channel)
         buf = "Current commands for this channel are: "
-        for command in self.optcoms[channel].keys():
+        for command in sorted(self.optcoms[channel].keys()):
             buf += command + ", "
         self.say(buf, channel)
 
@@ -317,26 +282,6 @@ class Bot:
             self.say(self.syscoms[data].__doc__, channel)
         except KeyError:
             self.say("Command not present", channel)
-
-    def nowplaying(self):
-        """Send now playing info for osu"""
-        #try:
-        #    f = codecs.open("C:\\Program Files (x86)\\OBS\\nowplaying.txt", encoding="utf-8")
-        #except FileNotFoundError:
-        #    print("File not found.")
-        #except:
-        #    print("Something went wrong")
-        #else:
-        #    self.say(f.readline(), self.match.group('chan'))
-        pass
-
-    def songinfo(self):
-        """Send song info for osu"""
-        pass
-
-    def sessioninfo(self):
-        """Send current stream session info"""
-        pass
 
     def sizeconvert(self, size=0):
         size_name = ("B", "KB", "MB", "GB")
@@ -362,22 +307,18 @@ class Bot:
         except requests.exceptions.HTTPError:
             print("Invalid HTTP response")
         except requests.exceptions.ReadTimeout:
-            self.say("Request timed out, working on a fix", self.match.group('chan'))
-            return
+            self.say("Request timed out, working on a fix", 
+                     self.match.group('chan'))
+            pass
         except requests.exceptions.ConnectionError:
-            self.say("Connection error, is this a real site?", self.match.group('chan'))
-            return
+            self.say("Connection error, is this a real site?", 
+                     self.match.group('chan'))
+            pass
         if r:
             if "html" in r.headers["content-type"]:
                 msg = "[title] "
                 msg += BeautifulSoup(r.text, 'html.parser').title.string
                 self.say(msg, self.match.group('chan'))
-                #try:
-                #    msg += self.pagetitle.search(r.text).group('title')
-                #except AttributeError:
-                #    self.say("No page title found", self.match.group('chan'))
-                #else:
-                #    self.say(msg, self.match.group('chan'))
             else:
                 msg = "[{}] - ".format(r.headers["content-type"])
                 try:
@@ -417,7 +358,7 @@ class Bot:
         self.ircprint()
 
         # TODO (7)
-        if self.links.search(msg) and (user != "shanghai_doll"):
+        if self.links.search(msg) and (user != self.config["nick"]):
             print(self.links.search(msg).group())
             self.linkscan(self.links.search(msg).group())
 
