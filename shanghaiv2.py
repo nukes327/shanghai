@@ -360,9 +360,10 @@ class Bot:
                              verify=False)
         except requests.exceptions.HTTPError:
             print("Invalid HTTP response")
-        except TimeOut:
-            print("Request timed out")
-        except ConnectionError:
+        except requests.exceptions.ReadTimeout:
+            self.say("Request timed out, working on a fix", self.match.group('chan'))
+            return
+        except requests.exceptions.ConnectionError:
             print("Connection error")
         if r:
             if "html" in r.headers["content-type"]:
