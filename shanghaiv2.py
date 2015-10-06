@@ -364,7 +364,8 @@ class Bot:
             self.say("Request timed out, working on a fix", self.match.group('chan'))
             return
         except requests.exceptions.ConnectionError:
-            print("Connection error")
+            self.say("Connection error, is this a real site?", self.match.group('chan'))
+            return
         if r:
             if "html" in r.headers["content-type"]:
                 msg = "[title] "
