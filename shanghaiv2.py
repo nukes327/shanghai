@@ -34,6 +34,7 @@ import time
 import re
 import codecs
 import ssl
+from bs4 import BeautifulSoup
 try:
     from requests import requests
 except ImportError:
@@ -369,12 +370,14 @@ class Bot:
         if r:
             if "html" in r.headers["content-type"]:
                 msg = "[title] "
-                try:
-                    msg += self.pagetitle.search(r.text).group('title')
-                except AttributeError:
-                    self.say("No page title found", self.match.group('chan'))
-                else:
-                    self.say(msg, self.match.group('chan'))
+                msg += BeautifulSoup(r.text, 'html.parser').title.string
+                self.say(msg, self.match.group('chan'))
+                #try:
+                #    msg += self.pagetitle.search(r.text).group('title')
+                #except AttributeError:
+                #    self.say("No page title found", self.match.group('chan'))
+                #else:
+                #    self.say(msg, self.match.group('chan'))
             else:
                 msg = "[{}] - ".format(r.headers["content-type"])
                 try:
