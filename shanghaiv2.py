@@ -49,6 +49,7 @@ class Bot:
             self.config["pass"] = input("Server pass: ")
             self.config["ssl"] = bool(input("SSL? True or False: ")) # TODO (2)
             self.config["prefix"] = input("Command prefix: ")
+            self.config["owner"] = input("Bot owner nick: ")
 
             #Create file with given name, dump JSON to file
             f = open(config, "w+")
@@ -180,11 +181,11 @@ class Bot:
         #Remove the channel from the channel list
         self.optcoms.pop(channel)
 
-    def quit(self):
+    def quit(self, force=False):
         """Save all open command sets, quit server, and exit program"""
         #You can't iterate over the dict itself because part pops the values
         #And you can't iterate the dict's keys because that returns another damned dict
-        if (self.match.group('user') == 'nukes327'):
+        if (self.match.group('user') == self.config["owner"]) or force:
             for chan in list(self.optcoms.keys()):
                 self.part(chan)
 
@@ -387,3 +388,13 @@ class Bot:
                 self.syscoms[command]()
             elif command in self.optcoms[chan]:
                 self.say(self.optcoms[chan][command], chan)
+
+if __name__ == '__main__':
+    shanghai = Bot("config.txt")
+    shanghai.connect()
+    shanghai.join("##channel")
+    while True:
+        try:
+            shanghai.listen()
+        except KeyboardInterrupt:
+            shanghai.quit(True)
