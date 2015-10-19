@@ -309,7 +309,7 @@ class Bot:
         if self.links.search(msg) and (user != self.config["nick"]):
             print(self.links.search(msg).group())
             try:
-                message = self.scanner.linkscan(self.links.search(msg).group())
+                message = self.scanner.scan(self.links.search(msg).group())
             except requests.exceptions.HTTPError:
                 print("HTTP ERROR") # TODO (7)
             except requests.exceptions.ReadTimeout:
@@ -319,7 +319,8 @@ class Bot:
             except:
                 print("UNKNOWN ERROR") #TODO (7)
             else:
-                self.say(message, chan)
+                for ln in message:
+                    self.say(ln, chan)
 
         #Add the user to the userlist if they're not present already
         if user not in self.users:

@@ -15,43 +15,61 @@ except ImportError:
 class LinkScanner:
 
     def __init__(self):
-        self.message = ""
+        self.message = []
+        self.request = None
+
+    def scan(self, link):
+        try:
+            self.message.append(self.linkscan(link))
+        except:
+            raise
+        if ".pixiv." in link:
+            try:
+                self.message.append(self.pixiv(link))
+            except:
+                raise
+        message = self.message
+        self.message = []
+        return message
 
     def linkscan(self, link):
         """Handle a link"""
-        try:
-            r = requests.get(link, timeout=1, stream=True,
-                             headers={"Accept-Encoding": "deflate"}) #Get the link
-        except requests.exceptions.SSLError:
-            r = requests.get(link, timeout=1, stream=True,
-                             headers={"Accept-Encoding": "deflate"}, #SSL Failed, try again without
+        message = ""
+        try: #Get the link
+            self.request = requests.get(link, timeout=1, stream=True, 
+                             headers={"Accept-Encoding": "deflate"}) 
+        except requests.exceptions.SSLError: #SSL Failed, try again without
+            self.request = requests.get(link, timeout=1, stream=True,
+                             headers={"Accept-Encoding": "deflate"}, 
                              verify=False)
         except requests.exceptions.HTTPError:
-            self.message = "Invalid HTTP response"
+            message = "Invalid HTTP response"
             raise
         except requests.exceptions.ReadTimeout:
-            self.message = "Request timed out, working on a fix"
+            message = "Request timed out, working on a fix"
             raise
         except requests.exceptions.ConnectionError:
-            self.message = "Connection error, is this a real site?"
+            message = "Connection error, is this a real site?"
             raise
-        if r:
-            if "html" in r.headers["content-type"]:
-                self.message = "[title] "
+        if self.request:
+            if "html" in self.request.headers["content-type"]:
+                message = "[title] "
                 try:
-                    self.message += BeautifulSoup(r.text, 'html.parser').title.string.strip()
+                    message += BeautifulSoup(self.request.text,
+                                             'html.parser').title.string.strip()
                 except AttributeError:
-                    self.message = "No page title found"
+                    message = "No page title found"
             else:
-                self.message = "[{}] - ".format(r.headers["content-type"])
+                message = "[{}] - ".format(self.request.headers["content-type"])
                 try:
-                    self.message += self.sizeconvert(int(r.headers["content-length"]))
+                    message += self.sizeconvert(
+                        int(self.request.headers["content-length"]))
                 except KeyError:
-                    self.message += "?B"
+                    message += "?B"
                 except IndexError:
-                    self.message += "What the fuck are you linking a file so big for"
-            r.close()
-        return self.message
+                    message += "What the fuck are you linking a file so big for"
+            self.request.close()
+        return message
 
     def sizeconvert(self, size=0):
         """Convert a Byte size to something readable"""
@@ -64,3 +82,13 @@ class LinkScanner:
             return str(size) + size_name[i]
         except IndexError:
             raise #Raise IndexError if the file is too big
+
+    def pixiv(self, link):
+        tags = BeautifulSoup(self.request.text, 'html.parser') \
+               .find(class_="tags-container")
+        message = "[tags] "
+        if tags:
+            message += ', '.join(tag.string for tag
+                                in tags.find_all(class_="text"))
+            return message
+        return "Tags not found, probably NSFW, working on a fix"
