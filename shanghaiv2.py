@@ -7,11 +7,11 @@
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
 # (6) Fix link scan. Needs moar error checking
+# (7) LOGGING EVERYTHING
 #---------
 # Recent Changes:
-#   I've given up on *specialized* twitch support for the time being
-#     This really just means I've ditched the IRCv3 twitch till they finish it
-#   Moved to BeautifulSoup for title parse instead of a regex
+#   Moved link scanning to its own file so I can add more
+#     specialized scanning without clogging up this file
 ################################################################################
 
 import socket
@@ -20,19 +20,7 @@ import time
 import re
 import codecs
 import ssl
-try:
-    from bs4 import BeautifulSoup
-except ImportError:
-    print("Failed to import BeautifulSoup, are you sure it's installed?")
-    exit()
-try:
-    from requests import requests
-except ImportError:
-    try:
-        import requests
-    except ImportError:
-        print("Failed to import requests")
-        exit()
+from linkscanning import LinkScanner
 
 class Bot:
 
@@ -96,6 +84,8 @@ class Bot:
         self.message = ""
         
         self.loadlist()
+        
+        self.scanner = LinkScanner()
 
     def send(self, cmd):
         """Send encoded message to irc socket"""
@@ -262,13 +252,12 @@ class Bot:
         if channel is None:
             channel = self.match.group('chan')
         buf = "Current system commands are: "
-        for command in sorted(self.syscoms.keys()):
-            buf += command + ", "
+        buf += ', '.join(str(command) for command in self.syscoms.keys())
         self.say(buf, channel)
         buf = "Current commands for this channel are: "
         if len(list(self.optcoms[channel].keys())):
-            for command in sorted(self.optcoms[channel].keys()):
-                buf += command + ", "
+            buf += ', '.join(str(command) for command in
+                             self.optcoms[channel].keys())
             self.say(buf, channel)
 
     def commandhelp(self, data=None, channel=None):
@@ -286,52 +275,7 @@ class Bot:
         except KeyError:
             self.say(self.commandhelp.__doc__, channel)
 
-    def sizeconvert(self, size=0):
-        """Convert a Byte size to something readable"""
-        size_name = ("B", "KB", "MB", "GB")
-        i = 0
-        while size >= 1024:
-            size >>= 10
-            i += 1
-        try:
-            return str(size) + size_name[i]
-        except IndexError:
-            return "What the fuck are you linking a file so big for"
-        
-
-    def linkscan(self, link):
-        """Handle a link"""
-        try:
-            r = requests.get(link, timeout=1, stream=True,
-                             headers={"Accept-Encoding": "deflate"})
-        except requests.exceptions.SSLError:
-            r = requests.get(link, timeout=1, stream=True,
-                             headers={"Accept-Encoding": "deflate"},
-                             verify=False)
-        except requests.exceptions.HTTPError:
-            print("Invalid HTTP response")
-        except requests.exceptions.ReadTimeout:
-            self.say("Request timed out, working on a fix", 
-                     self.match.group('chan'))
-            pass
-        except requests.exceptions.ConnectionError:
-            self.say("Connection error, is this a real site?", 
-                     self.match.group('chan'))
-            pass
-        if r:
-            if "html" in r.headers["content-type"]:
-                msg = "[title] "
-                msg += BeautifulSoup(r.text, 'html.parser').title.string
-                self.say(msg, self.match.group('chan'))
-            else:
-                msg = "[{}] - ".format(r.headers["content-type"])
-                try:
-                    msg += self.sizeconvert(int(r.headers["content-length"]))
-                except KeyError:
-                    print("No content-length present")
-                
-                self.say(msg, self.match.group('chan'))
-            r.close()
+    
 
     def listen(self):
         """Respond to PING, call parse if channel message"""
@@ -364,7 +308,18 @@ class Bot:
         # TODO (6)
         if self.links.search(msg) and (user != self.config["nick"]):
             print(self.links.search(msg).group())
-            self.linkscan(self.links.search(msg).group())
+            try:
+                message = self.scanner.linkscan(self.links.search(msg).group())
+            except requests.exceptions.HTTPError:
+                print("HTTP ERROR") # TODO (7)
+            except requests.exceptions.ReadTimeout:
+                print("READ TIMEOUT ERROR") # TODO (7)
+            except requests.exceptions.ConnectionError:
+                print("CONNECTION ERROR") # TODO (7)
+            except:
+                print("UNKNOWN ERROR") #TODO (7)
+            else:
+                self.say(message, chan)
 
         #Add the user to the userlist if they're not present already
         if user not in self.users:
