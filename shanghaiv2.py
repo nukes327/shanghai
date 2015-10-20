@@ -175,7 +175,7 @@ class Bot:
         """Save all open command sets, quit server, and exit program"""
         #You can't iterate over the dict itself because part pops the values
         #And you can't iterate the dict's keys because that returns another damned dict
-        if (self.match.group('user') == self.config["owner"]) or force:
+        if force or (self.match.group('user') == self.config["owner"]):
             for chan in list(self.optcoms.keys()):
                 self.part(chan)
 
@@ -307,7 +307,6 @@ class Bot:
 
         # TODO (6)
         if self.links.search(msg) and (user != self.config["nick"]):
-            print(self.links.search(msg).group())
             try:
                 message = self.scanner.scan(self.links.search(msg).group())
             except requests.exceptions.HTTPError:
@@ -320,6 +319,7 @@ class Bot:
                 print("UNKNOWN ERROR") #TODO (7)
             else:
                 for ln in message:
+                    print(ln)
                     self.say(ln, chan)
 
         #Add the user to the userlist if they're not present already
