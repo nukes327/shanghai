@@ -1,12 +1,13 @@
 # NOTES
+# (1) Link scanning regex doesn't pick up links without http(s)
+#     prepended, I'm not sure I care to fix that
 #---------
 # TODO
 # (1) Fix the config crashing if it receives invalid JSON
-# (2) Figure out SASL connection to a server
+# (2) Figure out better server authentication method
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
-# (6) Fix link scan. Needs moar error checking
 # (7) LOGGING EVERYTHING
 #---------
 # Recent Changes:
@@ -20,7 +21,19 @@ import time
 import re
 import codecs
 import ssl
-from linkscanning import LinkScanner
+from linkscanning import *
+
+class ShanghaiError(Exception):
+    """Base Error Class"""
+    pass
+
+class ClearanceError(ShanghaiError):
+    """Somebody tried to run something above their clearance"""
+    def __init__(self, *args, user=None, func=None):
+        self.user = user
+        self.func = func
+    def __str__(self):
+        return repr(self.user + " - " + self.func)
 
 class Bot:
 
@@ -40,9 +53,8 @@ class Bot:
             self.config["owner"] = input("Bot owner nick: ")
 
             #Create file with given name, dump JSON to file
-            f = open(config, "w+")
-            json.dump(self.config, f, indent=4)
-            f.close()
+            with open(config, "w+") as f:
+                json.dump(self.config, f, indent=4)
         else:
             # TODO (1)
             self.config = json.load(f)
@@ -105,14 +117,12 @@ class Bot:
         self.send("NICK {}".format(self.config["nick"]))
         self.send("USER {0} {0} {0} :{0}".format(self.config["nick"]))
 
-    def join(self, channel=None):
+    def join(self, force=False, channel=None):
         """Join and load commands for given channel"""
-
-        #If a user sends !join, join their channel
+        if not force and self.match.group('user') is not self.config["owner"]:
+		pass
         if channel is None:
             channel = self.message
-            #channel = "#{}".format(self.match.group('user'))
-
 
         self.send("JOIN {}".format(channel))
         print("Connected to channel {}".format(channel))
@@ -156,8 +166,11 @@ class Bot:
         self.send("PRIVMSG {} :{}".format(channel, msg))
         self.ircprint(msg, "shanghai_doll")
 
-    def part(self, channel=None):
+    def part(self, force=False, channel=None):
         """Leave channel and save specific commands"""
+        if not force and self.match.group('user') is not self.config["owner"]:
+		raise ClearanceError("Unauthorized user",
+                                     self.match.group('user'))
         if channel is None:
             channel = self.match.group('chan')
         self.send("PART {}".format(channel))
@@ -305,18 +318,18 @@ class Bot:
 
         self.ircprint()
 
-        # TODO (6)
+        # NOTES (1)
         if self.links.search(msg) and (user != self.config["nick"]):
             try:
                 message = self.scanner.scan(self.links.search(msg).group())
-            except requests.exceptions.HTTPError:
-                print("HTTP ERROR") # TODO (7)
-            except requests.exceptions.ReadTimeout:
-                print("READ TIMEOUT ERROR") # TODO (7)
-            except requests.exceptions.ConnectionError:
-                print("CONNECTION ERROR") # TODO (7)
-            except:
-                print("UNKNOWN ERROR") #TODO (7)
+            except RequestError as inst:
+                print(type(inst))
+                print(inst.args)
+                print(inst) # TODO (7)
+            except Exception as inst:
+                print(type(inst))
+                print(inst.args)
+                print(inst) #TODO (7)
             else:
                 for ln in message:
                     print(ln)
