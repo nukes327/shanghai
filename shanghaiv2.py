@@ -119,8 +119,6 @@ class Bot:
 
     def join(self, force=False, channel=None):
         """Join and load commands for given channel"""
-        if not force and self.match.group('user') is not self.config["owner"]:
-		pass
         if channel is None:
             channel = self.message
 
@@ -169,7 +167,7 @@ class Bot:
     def part(self, force=False, channel=None):
         """Leave channel and save specific commands"""
         if not force and self.match.group('user') is not self.config["owner"]:
-		raise ClearanceError("Unauthorized user",
+                raise ClearanceError("Unauthorized user",
                                      self.match.group('user'))
         if channel is None:
             channel = self.match.group('chan')
@@ -361,7 +359,7 @@ class Bot:
 if __name__ == '__main__':
     shanghai = Bot("config.txt")
     shanghai.connect()
-    shanghai.join("##channel")
+    shanghai.join(channel="##channel")
     while True:
         try:
             shanghai.listen()

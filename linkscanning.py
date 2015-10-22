@@ -108,8 +108,8 @@ class LinkScanner:
         """Convert's a Byte size to something more readable"""
         size_name = ("B", "KB", "MB", "GB", "TB")
         i = 0
-        while size >= 1000:
-            size /= 1000
+        while size >= 1024:
+            size /= 1024
             i+=1
         try:
             return str(round(size, 2)) + size_name[i]
