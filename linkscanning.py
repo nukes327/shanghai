@@ -13,7 +13,6 @@ except ImportError:
         import requests
     except ImportError:
         raise ImportError("Failed to import requests")
-import re
 
 
 
