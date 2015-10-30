@@ -21,6 +21,7 @@ import time
 import re
 import codecs
 import ssl
+import os
 from linkscanning import *
 
 class ShanghaiError(Exception):
@@ -72,7 +73,8 @@ class Bot:
                         "addcommand" : self.addcommand,
                         "delcommand" : self.delcommand,
                         "commands" : self.commandlist,
-                        "help" : self.commandhelp}
+                        "help" : self.commandhelp,
+                        "grep" : self.greplogs}
 
         #Put the channel message regex here
         self.msplit = re.compile(r"""
@@ -154,6 +156,22 @@ class Bot:
         print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
                                                                    user,
                                                                    msg))
+
+    def greplogs(self, pattern=None, channel=None):
+        if pattern is None:
+            pattern = self.message
+        if channel is None:
+            channel = self.match.group('chan')
+        pass
+        # pseudocode:
+        # result = []
+        # for filename in os get log files:
+        #     # Make sure to read the oldest logs first,
+        #     with open(filename) as f:
+        #         for line in re.findall(re.compile(pattern, re.MULTILINE),
+        #                                file.read())
+        #             result.append(line)
+        # send( result[-5:] )   <-- want to return the 5 most recent matches
 
     def say(self, msg=None, channel=None):
         """Send message to channel"""
