@@ -13,6 +13,7 @@ except ImportError:
         import requests
     except ImportError:
         raise ImportError("Failed to import requests")
+import re
 
 
 
@@ -121,8 +122,21 @@ class LinkScanner:
                .find(class_="tags-container")
         message = "[tags] "
         if tags:
-            message += ', '.join(tag.string for tag
-                                in tags.find_all(class_="text"))
+            message += ', '.join(tag.string for tag \
+                in tags.find_all(class_="text"))
             return message
         return "Tags not found, probably NSFW, working on a fix"
         
+    def booru(self):
+        """Get tags off a booru, and pixiv tags if there's a source"""
+        soup = BeautifulSoup(self.request.text, 'html.parser')
+        tags = soup.find(id="responsive-tag-list")
+        rating = {'s' : 'safe', 'q': 'questionable', 'e' : 'explicit'}
+        message = "[tags] "
+        if tags:
+            message += ', '.join(tag..find(class_='search-tag'.text.strip()) \
+                for tag in tags.find_all(class_=re.compile('category-[1-4]'))
+            message += " [rating] " + rating[soup.find(attrs={'data-rating' : \
+                re.compile('[sqe]')}).attrs['data-rating']]
+            return message
+        return "Base information tags not found"
