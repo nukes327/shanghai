@@ -377,7 +377,7 @@ class Bot:
 if __name__ == '__main__':
     shanghai = Bot("config.txt")
     shanghai.connect()
-    shanghai.join(channel="##channel")
+    shanghai.join(channel="##shanghaidoll")
     while True:
         try:
             shanghai.listen()
