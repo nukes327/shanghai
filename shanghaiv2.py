@@ -111,7 +111,8 @@ class Bot:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.config["server"], self.config["port"]))
         if self.config["ssl"]:
-            self.irc = ssl.wrap_socket(s)
+            context = ssl.create_default_context()
+            self.irc = context.wrap_socket(s, server_hostname=self.config["server"])
         else:
             self.irc = s
         if self.config["pass"]:
@@ -175,6 +176,7 @@ class Bot:
 
     def say(self, msg=None, channel=None):
         """Send message to channel"""
+        #TODO SPLIT ECHO TO ITS OWN COMMAND
         if msg is None:
             msg = self.message
         if channel is None:
