@@ -22,6 +22,7 @@ import re
 import codecs
 import ssl
 import os
+import configparser
 from linkscanning import *
 
 class ShanghaiError(Exception):
@@ -38,28 +39,22 @@ class ClearanceError(ShanghaiError):
 
 class Bot:
 
-    def __init__(self, config="config.txt"):
-        self.config = {}
+    def __init__(self, config="shanghai.ini"):
+        self.config = configparser.ConfigParser()
         try:
-            f = open(config)
+            with open(config) as f:
+                self.config.read_file(f)
         except FileNotFoundError:
-            #File wasn't found, initialize all values
-            print("Error, config not found")
-            self.config["server"] = input("Server: ")
-            self.config["port"] = int(input("Port: "))
-            self.config["nick"] = input("Nick: ")
-            self.config["pass"] = input("Server pass: ")
-            self.config["ssl"] = bool(input("SSL? True or False: ")) # TODO (2)
-            self.config["prefix"] = input("Command prefix: ")
-            self.config["owner"] = input("Bot owner nick: ")
-
-            #Create file with given name, dump JSON to file
-            with open(config, "w+") as f:
-                json.dump(self.config, f, indent=4)
-        else:
-            # TODO (1)
-            self.config = json.load(f)
-            f.close()
+            default = config["DEFAULT"]
+            default["owner"] = input("Default bot owner: ")
+            default["nick"] = input("Default bot nick: ")
+            default["password"] = input("Default server password: ")
+            default["prefix"] = input("Default command prefix: ")
+            default["server"] = input("IRC server: ")
+            default["port"] = input("Server port: ")
+            default["ssl"] = input("SSL? Yes or No: ")
+            with open(config, 'w') as conffile:
+                self.config.write(conffile)
         self.users = {}
 
         #Loaded later with any channel-specific commands
@@ -109,16 +104,16 @@ class Bot:
     def connect(self):
         """Connect to given irc server"""
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.config["server"], self.config["port"]))
-        if self.config["ssl"]:
+        s.connect((self.config["DEFAULT"]["server"], int(self.config["DEFAULT"]["port"])))
+        if self.config["DEFAULT"].getboolean("ssl"):
             context = ssl.create_default_context()
-            self.irc = context.wrap_socket(s, server_hostname=self.config["server"])
+            self.irc = context.wrap_socket(s, server_hostname=self.config["DEFAULT"]["server"])
         else:
             self.irc = s
-        if self.config["pass"]:
-            self.send("PASS {}".format(self.config["pass"]))
-        self.send("NICK {}".format(self.config["nick"]))
-        self.send("USER {0} {0} {0} :{0}".format(self.config["nick"]))
+        if self.config["DEFAULT"]["password"]:
+            self.send("PASS {}".format(self.config["DEFAULT"]["password"]))
+        self.send("NICK {}".format(self.config["DEFAULT"]["nick"]))
+        self.send("USER {0} {0} {0} :{0}".format(self.config["DEFAULT"]["nick"]))
 
     def join(self, force=False, channel=None):
         """Join and load commands for given channel"""
@@ -186,7 +181,7 @@ class Bot:
 
     def part(self, force=False, channel=None):
         """Leave channel and save specific commands"""
-        if not force and self.match.group('user') is not self.config["owner"]:
+        if not force and self.match.group('user') is not self.config["DEFAULT"]["owner"]:
                 raise ClearanceError("Unauthorized user",
                                      self.match.group('user'))
         if channel is None:
@@ -206,7 +201,7 @@ class Bot:
         """Save all open command sets, quit server, and exit program"""
         #You can't iterate over the dict itself because part pops the values
         #And you can't iterate the dict's keys because that returns another damned dict
-        if force or (self.match.group('user') == self.config["owner"]):
+        if force or (self.match.group('user') == self.config["DEFAULT"]["owner"]):
             for chan in list(self.optcoms.keys()):
                 self.part(chan)
 
@@ -337,7 +332,7 @@ class Bot:
         self.ircprint()
 
         # NOTES (1)
-        if self.links.search(msg) and (user != self.config["nick"]):
+        if self.links.search(msg) and (user != self.config["DEFAULT"]["nick"]):
             try:
                 message = self.scanner.scan(self.links.search(msg).group())
             except RequestError as inst:
@@ -359,10 +354,10 @@ class Bot:
             print("User {} added to userlist".format(user))
 
         #Only check for commands if the message starts with an !
-        if msg.startswith(self.config["prefix"]):
+        if msg.startswith(self.config["DEFAULT"]["prefix"]):
             
             #Snag the actual command to compare
-            command = msg.split(" ",maxsplit=1)[0].lstrip(self.config["prefix"])
+            command = msg.split(" ",maxsplit=1)[0].lstrip(self.config["DEFAULT"]["prefix"])
 
             #Attempt to set command args (msg), or give it a blank string
             try:
@@ -377,7 +372,7 @@ class Bot:
                 self.say(self.optcoms[chan][command], chan)
 
 if __name__ == '__main__':
-    shanghai = Bot("config.txt")
+    shanghai = Bot()
     shanghai.connect()
     shanghai.join(channel="##shanghaidoll")
     while True:
