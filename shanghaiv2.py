@@ -3,16 +3,14 @@
 #     prepended, I'm not sure I care to fix that
 #---------
 # TODO
-# (1) Fix the config crashing if it receives invalid JSON
-# (2) Figure out better server authentication method
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
 # (7) LOGGING EVERYTHING
 #---------
 # Recent Changes:
-#   Moved link scanning to its own file so I can add more
-#     specialized scanning without clogging up this file
+#   Changed standard config and channel specific commands from
+#   being saved in a JSON format to using a config parser
 ################################################################################
 
 import socket
@@ -39,13 +37,13 @@ class ClearanceError(ShanghaiError):
 
 class Bot:
 
-    def __init__(self, config="shanghai.ini"):
+    def __init__(self, config="shanghai.ini", chancoms="commands.ini"):
         self.config = configparser.ConfigParser()
         try:
             with open(config) as f:
                 self.config.read_file(f)
         except FileNotFoundError:
-            default = config["DEFAULT"]
+            default = self.config["DEFAULT"]
             default["owner"] = input("Default bot owner: ")
             default["nick"] = input("Default bot nick: ")
             default["password"] = input("Default server password: ")
@@ -58,7 +56,15 @@ class Bot:
         self.users = {}
 
         #Loaded later with any channel-specific commands
-        self.optcoms = {}
+        self.chancoms = configparser.ConfigParser()
+        try:
+            with open(chancoms) as f:
+                self.chancoms.read_file(f)
+        except FileNotFoundError:
+            print("Channel commands file not found, will initialize as needed")
+
+        #Save the channel command filename for later use
+        self.chanfile = chancoms
 
         #Used to call methods from irc messages
         self.syscoms = {"quit" : self.quit,
@@ -122,38 +128,35 @@ class Bot:
 
         self.send("JOIN {}".format(channel))
         print("Connected to channel {}".format(channel))
-        print("Loading command list for {}".format(channel))
 
-        #Open command file or create a blank file if missing
+        #Verify a section exists for the channel, and create it if not
+        print("Verifying command list for {}".format(channel))
         try:
-            f = open(channel)
-        except FileNotFoundError:
-            f = open(channel, "w+")
-            print("File not found, "
-                  "creating a new command list for {}".format(channel))
-
-        #Loads the JSON for the channel-specific commands 
-        try:
-            self.optcoms[channel] = json.load(f)
-        except:
-            print("No command list found, initializing")
-            self.optcoms[channel] = {}
+            self.chancoms.add_section(channel)
+        except configparser.DuplicateSectionError:
+            print("Channel entry exists...")
         else:
-            print("Command list loaded, ready to go")
-        f.close()
+            print("Created new entry for channel...")
+        finally:
+            print("Ready to go for {}".format(channel))
 
-    def ircprint(self, msg=None, user=None):
-        """Print message readably to terminal with timestamp"""
+    def ircprint(self, msg=None, user=None, chan = None, msgtime = None):
+        """Print message readably to terminal with timestamp and channel"""
         if msg is None:
             msg = self.match.group('msg')
         if user is None:
             user = self.match.group('user')
-        msgtime = time.localtime()
-        print("[{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
+        if chan is None:
+            chan = self.match.group('chan')
+        if msgtime is None:
+            msgtime = time.localtime()
+        print("[{3}/{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
                                                                    user,
-                                                                   msg))
+                                                                   msg,
+                                                                   chan))
 
     def greplogs(self, pattern=None, channel=None):
+        """Checks logs for specified pattern (NONFUNCTIONAL)"""
         if pattern is None:
             pattern = self.message
         if channel is None:
@@ -180,7 +183,7 @@ class Bot:
         self.ircprint(msg, "shanghai_doll")
 
     def part(self, force=False, channel=None):
-        """Leave channel and save specific commands"""
+        """Leave channel"""
         if not force and self.match.group('user') is not self.config["DEFAULT"]["owner"]:
                 raise ClearanceError("Unauthorized user",
                                      self.match.group('user'))
@@ -188,28 +191,18 @@ class Bot:
             channel = self.match.group('chan')
         self.send("PART {}".format(channel))
 
-        #Saves the channel's commands to the channel's file
-        print("Writing command list for {} to file...".format(channel))
-        f = open(channel, "w")
-        json.dump(self.optcoms[channel], f, indent=4)
-        f.close()
-
-        #Remove the channel from the channel list
-        self.optcoms.pop(channel)
-
     def quit(self, force=False):
-        """Save all open command sets, quit server, and exit program"""
+        """Write channel commands file, quit server, and exit program"""
         #You can't iterate over the dict itself because part pops the values
         #And you can't iterate the dict's keys because that returns another damned dict
         if force or (self.match.group('user') == self.config["DEFAULT"]["owner"]):
-            for chan in list(self.optcoms.keys()):
-                self.part(chan)
-
             print("Writing userlist to file...")
             f = open("userlist.txt", "w")
             json.dump(self.users, f, indent=4)
             f.close()
             self.send("QUIT")
+            with open(self.chanfile, 'w') as chanfile:
+                self.chancoms.write(chanfile)
 
             exit()
         else:
@@ -237,7 +230,7 @@ class Bot:
         f.close()
 
     def addcommand(self, data=None, channel=None):
-        """Add or change command in optcoms for channel"""
+        """Add or change channel-specific command"""
         if data is None:
             data = self.message
         if channel is None:
@@ -249,14 +242,14 @@ class Bot:
         #Add the command to the channel command list
         if data[0] not in self.syscoms:
             try:
-                self.optcoms[channel][data[0]] = data[1]
+                self.chancoms[channel][data[0]] = data[1]
             except:
                 print("Improper syntax, no command added")
         else:
             print("Command exists as a system command, ignored")
 
     def delcommand(self, data=None, channel=None):
-        """Delete a command from optcoms for channel"""
+        """Delete a channel-specific command"""
         if data is None:
             data = self.message
         if channel is None:
@@ -267,11 +260,11 @@ class Bot:
 
         #Remove the command from the channel command list
         try:
-            self.optcoms[channel].pop(data)
-        except KeyError:
-            print("Command not present")
-        except IndexError:
-            print("Somebody fucked the input")
+            if self.chancoms.remove_option(channel, data):
+                print("Command removed")
+            else: print("Command not present")
+        except configparser.NoSectionError:
+            print("Dude wut, this should never be raised")
     
     def commandlist(self, channel=None):
         """Prints a command list to the channel"""
@@ -281,13 +274,13 @@ class Bot:
         buf += ', '.join(str(command) for command in self.syscoms.keys())
         self.say(buf, channel)
         buf = "Current commands for this channel are: "
-        if len(list(self.optcoms[channel].keys())):
+        if self.chancoms.options(channel):
             buf += ', '.join(str(command) for command in
-                             self.optcoms[channel].keys())
+                             self.chancoms.options(channel))
             self.say(buf, channel)
 
     def commandhelp(self, data=None, channel=None):
-        """Sends docstring for requested command"""
+        """Provides usage help for a command"""
         if data is None:
             data = self.message
         if channel is None:
@@ -299,7 +292,8 @@ class Bot:
         try:
             self.say(self.syscoms[data].__doc__, channel)
         except KeyError:
-            self.say(self.commandhelp.__doc__, channel)
+            self.say("Couldn't find the command, did you spell it correctly?",
+                      channel)
 
     
 
@@ -368,8 +362,8 @@ class Bot:
             #Compare to system commands first, and then channel commands after
             if command in self.syscoms:
                 self.syscoms[command]()
-            elif command in self.optcoms[chan]:
-                self.say(self.optcoms[chan][command], chan)
+            elif command in self.chancoms[chan]:
+                self.say(self.chancoms[chan][command], chan)
 
 if __name__ == '__main__':
     shanghai = Bot()
