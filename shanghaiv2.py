@@ -17,10 +17,9 @@ import socket
 import json
 import time
 import re
-import codecs
 import ssl
-import os
 import configparser
+import logging
 from linkscanning import *
 
 class ShanghaiError(Exception):
@@ -70,7 +69,7 @@ class Bot:
         self.syscoms = {"quit" : self.quit,
                         "part" : self.part,
                         "join" : self.join,
-                        "echo" : self.say,
+                        "echo" : self.echo,
                         "addcommand" : self.addcommand,
                         "delcommand" : self.delcommand,
                         "commands" : self.commandlist,
@@ -102,6 +101,8 @@ class Bot:
         
         self.scanner = LinkScanner()
 
+# Core functionality
+
     def send(self, cmd):
         """Send encoded message to irc socket"""
         #Encode to bytes on send
@@ -109,17 +110,18 @@ class Bot:
 
     def connect(self):
         """Connect to given irc server"""
+        default = self.config["DEFAULT"]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.config["DEFAULT"]["server"], int(self.config["DEFAULT"]["port"])))
-        if self.config["DEFAULT"].getboolean("ssl"):
+        s.connect((default["server"], int(default["port"])))
+        if default.getboolean("ssl"):
             context = ssl.create_default_context()
-            self.irc = context.wrap_socket(s, server_hostname=self.config["DEFAULT"]["server"])
+            self.irc = context.wrap_socket(s, server_hostname=default["server"])
         else:
             self.irc = s
-        if self.config["DEFAULT"]["password"]:
-            self.send("PASS {}".format(self.config["DEFAULT"]["password"]))
-        self.send("NICK {}".format(self.config["DEFAULT"]["nick"]))
-        self.send("USER {0} {0} {0} :{0}".format(self.config["DEFAULT"]["nick"]))
+        if default["password"]:
+            self.send("PASS {}".format(default["password"]))
+        self.send("NICK {}".format(default["nick"]))
+        self.send("USER {0} {0} {0} :{0}".format(default["nick"]))
 
     def join(self, force=False, channel=None):
         """Join and load commands for given channel"""
@@ -140,47 +142,22 @@ class Bot:
         finally:
             print("Ready to go for {}".format(channel))
 
-    def ircprint(self, msg=None, user=None, chan = None, msgtime = None):
-        """Print message readably to terminal with timestamp and channel"""
-        if msg is None:
-            msg = self.match.group('msg')
-        if user is None:
-            user = self.match.group('user')
-        if chan is None:
-            chan = self.match.group('chan')
-        if msgtime is None:
-            msgtime = time.localtime()
-        print("[{3}/{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
-                                                                   user,
-                                                                   msg,
-                                                                   chan))
-
-    def greplogs(self, pattern=None, channel=None):
-        """Checks logs for specified pattern (NONFUNCTIONAL)"""
-        if pattern is None:
-            pattern = self.message
-        if channel is None:
-            channel = self.match.group('chan')
-        pass
-        # pseudocode:
-        # result = []
-        # for filename in os get log files:
-        #     # Make sure to read the oldest logs first,
-        #     with open(filename) as f:
-        #         for line in re.findall(re.compile(pattern, re.MULTILINE),
-        #                                file.read())
-        #             result.append(line)
-        # send( result[-5:] )   <-- want to return the 5 most recent matches
-
     def say(self, msg=None, channel=None):
         """Send message to channel"""
-        #TODO SPLIT ECHO TO ITS OWN COMMAND
         if msg is None:
             msg = self.message
         if channel is None:
             channel = self.match.group('chan')
         self.send("PRIVMSG {} :{}".format(channel, msg))
-        self.ircprint(msg, "shanghai_doll")
+        self.ircprint(msg, "shanghai_doll", channel)
+
+    def echo(self, msg=None, channel=None):
+        """Echos a message to the channel"""
+        if msg is None:
+            msg = self.message
+        if channel is None:
+            channel = self.match.group('chan')
+        self.say(msg, channel)
 
     def part(self, force=False, channel=None):
         """Leave channel"""
@@ -193,8 +170,6 @@ class Bot:
 
     def quit(self, force=False):
         """Write channel commands file, quit server, and exit program"""
-        #You can't iterate over the dict itself because part pops the values
-        #And you can't iterate the dict's keys because that returns another damned dict
         if force or (self.match.group('user') == self.config["DEFAULT"]["owner"]):
             print("Writing userlist to file...")
             f = open("userlist.txt", "w")
@@ -228,74 +203,6 @@ class Bot:
         else:
             print("Userlist loaded and ready to go")
         f.close()
-
-    def addcommand(self, data=None, channel=None):
-        """Add or change channel-specific command"""
-        if data is None:
-            data = self.message
-        if channel is None:
-            channel = self.match.group('chan')
-            
-        #Get the command to add
-        data = data.split(" ",maxsplit=1)
-
-        #Add the command to the channel command list
-        if data[0] not in self.syscoms:
-            try:
-                self.chancoms[channel][data[0]] = data[1]
-            except:
-                print("Improper syntax, no command added")
-        else:
-            print("Command exists as a system command, ignored")
-
-    def delcommand(self, data=None, channel=None):
-        """Delete a channel-specific command"""
-        if data is None:
-            data = self.message
-        if channel is None:
-            channel = self.match.group('chan')
-
-        #Get the command to remove
-        data = data.split(" ")[0]
-
-        #Remove the command from the channel command list
-        try:
-            if self.chancoms.remove_option(channel, data):
-                print("Command removed")
-            else: print("Command not present")
-        except configparser.NoSectionError:
-            print("Dude wut, this should never be raised")
-    
-    def commandlist(self, channel=None):
-        """Prints a command list to the channel"""
-        if channel is None:
-            channel = self.match.group('chan')
-        buf = "Current system commands are: "
-        buf += ', '.join(str(command) for command in self.syscoms.keys())
-        self.say(buf, channel)
-        buf = "Current commands for this channel are: "
-        if self.chancoms.options(channel):
-            buf += ', '.join(str(command) for command in
-                             self.chancoms.options(channel))
-            self.say(buf, channel)
-
-    def commandhelp(self, data=None, channel=None):
-        """Provides usage help for a command"""
-        if data is None:
-            data = self.message
-        if channel is None:
-            channel = self.match.group('chan')
-
-        #Make sure only checking for one command
-        data = data.split(" ")[0]
-
-        try:
-            self.say(self.syscoms[data].__doc__, channel)
-        except KeyError:
-            self.say("Couldn't find the command, did you spell it correctly?",
-                      channel)
-
-    
 
     def listen(self):
         """Respond to PING, call parse if channel message"""
@@ -364,6 +271,107 @@ class Bot:
                 self.syscoms[command]()
             elif command in self.chancoms[chan]:
                 self.say(self.chancoms[chan][command], chan)
+
+
+# Extra functionality
+
+    def ircprint(self, msg=None, user=None, chan = None, msgtime = None):
+        """Print message readably to terminal with timestamp and channel"""
+        if msg is None:
+            msg = self.match.group('msg')
+        if user is None:
+            user = self.match.group('user')
+        if chan is None:
+            chan = self.match.group('chan')
+        if msgtime is None:
+            msgtime = time.localtime()
+        print("[{3}/{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
+                                                                   user,
+                                                                   msg,
+                                                                   chan))
+
+    def greplogs(self, pattern=None, channel=None):
+        """Checks logs for specified pattern (NONFUNCTIONAL)"""
+        if pattern is None:
+            pattern = self.message
+        if channel is None:
+            channel = self.match.group('chan')
+        pass
+        # pseudocode:
+        # result = []
+        # for filename in os get log files:
+        #     # Make sure to read the oldest logs first,
+        #     with open(filename) as f:
+        #         for line in re.findall(re.compile(pattern, re.MULTILINE),
+        #                                file.read())
+        #             result.append(line)
+        # send( result[-5:] )   <-- want to return the 5 most recent matches
+
+    def addcommand(self, data=None, channel=None):
+        """Add or change channel-specific command"""
+        if data is None:
+            data = self.message
+        if channel is None:
+            channel = self.match.group('chan')
+            
+        #Get the command to add
+        data = data.split(" ",maxsplit=1)
+
+        #Add the command to the channel command list
+        if data[0] not in self.syscoms:
+            try:
+                self.chancoms[channel][data[0]] = data[1]
+            except:
+                print("Improper syntax, no command added")
+        else:
+            print("Command exists as a system command, ignored")
+
+    def delcommand(self, data=None, channel=None):
+        """Delete a channel-specific command"""
+        if data is None:
+            data = self.message
+        if channel is None:
+            channel = self.match.group('chan')
+
+        #Get the command to remove
+        data = data.split(" ")[0]
+
+        #Remove the command from the channel command list
+        try:
+            if self.chancoms.remove_option(channel, data):
+                print("Command removed")
+            else: print("Command not present")
+        except configparser.NoSectionError:
+            print("Dude wut, this should never be raised")
+    
+    def commandlist(self, channel=None):
+        """Prints a command list to the channel"""
+        if channel is None:
+            channel = self.match.group('chan')
+        buf = "Current system commands are: "
+        buf += ', '.join(str(command) for command in self.syscoms.keys())
+        self.say(buf, channel)
+        buf = "Current commands for this channel are: "
+        if self.chancoms.options(channel):
+            buf += ', '.join(str(command) for command in
+                             self.chancoms.options(channel))
+            self.say(buf, channel)
+
+    def commandhelp(self, data=None, channel=None):
+        """Provides usage help for a command"""
+        if data is None:
+            data = self.message
+        if channel is None:
+            channel = self.match.group('chan')
+
+        #Make sure only checking for one command
+        data = data.split(" ")[0]
+
+        try:
+            self.say(self.syscoms[data].__doc__, channel)
+        except KeyError:
+            self.say("Couldn't find the command, did you spell it correctly?",
+                      channel)
 
 if __name__ == '__main__':
     shanghai = Bot()

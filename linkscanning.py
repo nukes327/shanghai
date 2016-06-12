@@ -40,10 +40,11 @@ class RequestError(LinkScanError):
         
 class LinkScanner:
     
-    def __init__(self):
+    def __init__(self, logger):
         self.message = []
         self.request = None
         self.sites = {"\.pixiv\." : self.pixiv}
+        self.logger = logger
         
     def scan(self, link):
         try:
