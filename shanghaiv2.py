@@ -126,7 +126,9 @@ class Bot:
         self.send("USER {0} {0} {0} :{0}".format(default["nick"]))
 
     def join(self, force=False, channel=None):
-        """Join and load commands for given channel"""
+        """Join and load commands for given channel.
+        Example syntax: ,join <channel>
+        """
         if channel is None:
             channel = self.message
 
@@ -154,7 +156,9 @@ class Bot:
         self.ircprint(msg, "shanghai_doll", channel)
 
     def echo(self, msg=None, channel=None):
-        """Echos a message to the channel"""
+        """Echos a message to the channel.
+        Example syntax: ,echo <message>
+        """
         if msg is None:
             msg = self.message
         if channel is None:
@@ -162,7 +166,9 @@ class Bot:
         self.say(msg, channel)
 
     def part(self, force=False, channel=None):
-        """Leave channel"""
+        """Leave the current channel.
+        Example syntax: ,part
+        """
         if not force and self.match.group('user') is not self.config["DEFAULT"]["owner"]:
                 raise ClearanceError("Unauthorized user",
                                      self.match.group('user'))
@@ -171,7 +177,9 @@ class Bot:
         self.send("PART {}".format(channel))
 
     def quit(self, force=False):
-        """Write channel commands file, quit server, and exit program"""
+        """Write channel commands file, quit server, and exit program.
+        Example syntax: ,quit
+        """
         if force or (self.match.group('user') == self.config["DEFAULT"]["owner"]):
             print("Writing userlist to file...")
             f = open("userlist.txt", "w")
@@ -312,7 +320,9 @@ class Bot:
         # send( result[-5:] )   <-- want to return the 5 most recent matches
 
     def addcommand(self, data=None, channel=None):
-        """Add or change channel-specific command"""
+        """Add or change channel-specific command.
+        Example syntax: ,addcommand <command>
+        """
         if data is None:
             data = self.message
         if channel is None:
@@ -331,7 +341,9 @@ class Bot:
             print("Command exists as a system command, ignored")
 
     def delcommand(self, data=None, channel=None):
-        """Delete a channel-specific command"""
+        """Delete a channel-specific command.
+        Example syntax: ,delcommand <command>
+        """
         if data is None:
             data = self.message
         if channel is None:
@@ -349,7 +361,9 @@ class Bot:
             print("Dude wut, this should never be raised")
     
     def commandlist(self, channel=None):
-        """Prints a command list to the channel"""
+        """Prints a command list to the channel.
+        Example syntax: ,commands
+        """
         if channel is None:
             channel = self.match.group('chan')
         buf = "Current system commands are: "
@@ -362,7 +376,9 @@ class Bot:
             self.say(buf, channel)
 
     def commandhelp(self, data=None, channel=None):
-        """Provides usage help for a command"""
+        """Provides usage help for a command.
+        Example syntax: ,help <command>
+        """
         if data is None:
             data = self.message
         if channel is None:
@@ -374,8 +390,9 @@ class Bot:
         try:
             self.say(self.syscoms[data].__doc__, channel)
         except KeyError:
-            self.say("Couldn't find the command, did you spell it correctly?",
-                      channel)
+            self.commandlist(channel)
+            #self.say("Couldn't find the command, did you spell it correctly?",
+            #          channel)
 
 if __name__ == '__main__':
     shanghai = Bot()
