@@ -20,6 +20,7 @@ import re
 import ssl
 import configparser
 import logging
+import getpass
 from linkscanning import *
 
 class ShanghaiError(Exception):
@@ -45,7 +46,7 @@ class Bot:
             default = self.config["DEFAULT"]
             default["owner"] = input("Default bot owner: ")
             default["nick"] = input("Default bot nick: ")
-            default["password"] = input("Default server password: ")
+            default["password"] = getpass.getpass("Default server password: ")
             default["prefix"] = input("Default command prefix: ")
             default["server"] = input("IRC server: ")
             default["port"] = input("Server port: ")
@@ -99,7 +100,8 @@ class Bot:
         
         self.loadlist()
         
-        self.scanner = LinkScanner()
+        self.logger = logging.getLogger('shanghai')
+        self.scanner = LinkScanner(self.logger)
 
 # Core functionality
 
@@ -176,6 +178,8 @@ class Bot:
             json.dump(self.users, f, indent=4)
             f.close()
             self.send("QUIT")
+            self.irc.shutdown(socket.SHUT_RDWR)
+            self.irc.close()
             with open(self.chanfile, 'w') as chanfile:
                 self.chancoms.write(chanfile)
 
@@ -376,7 +380,6 @@ class Bot:
 if __name__ == '__main__':
     shanghai = Bot()
     shanghai.connect()
-    shanghai.join(channel="##shanghaidoll")
     while True:
         try:
             shanghai.listen()
