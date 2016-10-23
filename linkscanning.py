@@ -16,36 +16,38 @@ except ImportError:
 import re
 
 
-
 class LinkScanError(Exception):
     """Base Error Class"""
     pass
-    
+
+
 class TitleError(LinkScanError):
     """Error in fetching title"""
     def __init__(self, msg):
         self.msg = msg
+
     def __str__(self):
         return repr(self.msg)
-                
+
+
 class RequestError(LinkScanError):
     """Error in GET request"""
     def __init__(self, link, msg):
         self.link = link
         self.msg = msg
+
     def __str__(self):
         return " - ".join([repr(self.msg), repr(self.link)])
 
 
-        
 class LinkScanner:
-    
+
     def __init__(self, logger):
         self.message = []
         self.request = None
-        self.sites = {"\.pixiv\." : self.pixiv}
+        self.sites = {"\.pixiv\.": self.pixiv}
         self.logger = logger
-        
+
     def scan(self, link):
         try:
             self.getrequest(link)
@@ -65,7 +67,7 @@ class LinkScanner:
         message = self.message
         self.message = []
         return message
-        
+
     def getrequest(self, link):
         """Send GET request to given link"""
         try:
@@ -84,12 +86,12 @@ class LinkScanner:
         """Get a title from html"""
         message = "[title] "
         try:
-            message += BeautifulSoup(self.request.text,'html.parser').title.string.strip()
+            message += BeautifulSoup(self.request.text, 'html.parser').title.string.strip()
             message = message.replace('\n', '')
         except AttributeError:
             raise TitleError("No page title found")
         return message
-    
+
     def fetchsize(self):
         """Get size of linked content"""
         message = "[{}] - ".format(self.request.headers["content-type"])
@@ -101,43 +103,41 @@ class LinkScanner:
         except IndexError:
             message += "What the fuck are you linking a file so big for"
         return message
-        
 
-    # I removed the old size convert that truncated the decimal
-    
     def sizeconvert(self, size=0):
         """Convert's a Byte size to something more readable"""
         size_name = ("B", "KB", "MB", "GB", "TB")
         i = 0
         while size >= 1024:
             size /= 1024
-            i+=1
+            i += 1
         try:
             return str(round(size, 2)) + size_name[i]
         except IndexError:
             raise
-        
+
     def pixiv(self):
         """Get tags off a pixiv link"""
         tags = BeautifulSoup(self.request.text, 'html.parser') \
-               .find(class_="tags-container")
+            .find(class_="tags-container")
         message = "[tags] "
         if tags:
-            message += ', '.join(tag.string for tag \
-                in tags.find_all(class_="text"))
+            message += ', '.join(tag.string for tag in tags.find_all(class_="text"))
             return message
         return "Tags not found, probably NSFW, working on a fix"
-        
-#    def booru(self):
-#        """Get tags off a booru, and pixiv tags if there's a source"""
-#        soup = BeautifulSoup(self.request.text, 'html.parser')
-#        tags = soup.find(id="responsive-tag-list")
-#        rating = {'s' : 'safe', 'q': 'questionable', 'e' : 'explicit'}
-#        message = "[tags] "
-#        if tags:
-#            message += ', '.join(tag.find(class_='search-tag'.text.strip()) \
-#                for tag in tags.find_all(class_=re.compile('category-[1-4]'))
-#            message += " [rating] " + rating[soup.find(attrs={'data-rating' : \
-#                re.compile('[sqe]')}).attrs['data-rating']]
-#            return message
-#        return "Base information tags not found"
+
+    def booru(self):
+        """Get tags off a booru, and pixiv tags if there's a source"""
+        soup = BeautifulSoup(self.request.text, 'html.parser')
+        tags = soup.find(id="responsive-tag-list")
+        rating = {'s': 'safe', 'q': 'questionable', 'e': 'explicit'}
+        message = "[tags] "
+        if tags:
+            message += ', '.join(
+                tag.find(class_='search-tag'.text.strip())
+                for tag in tags.find_all(class_=re.compile('category-[1-4]')))
+            message += " [rating] " + rating[
+                soup.find(attrs={'data-rating':
+                          re.compile('[sqe]')}).attrs['data-rating']]
+            return message
+        return "Base information tags not found"
