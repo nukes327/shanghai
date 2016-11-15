@@ -3,14 +3,17 @@
 #     prepended, I'm not sure I care to fix that
 # ---------
 # TODO
+# (1) https://docs.python.org/3.5/library/asyncio.html ASYNCIO
 # (3) Check for chat moderator status to limit system commands
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
 # (7) LOGGING EVERYTHING
 # ---------
 # Recent Changes:
-#   Changed standard config and channel specific commands from
-#   being saved in a JSON format to using a config parser
+#   Moved echo to additional functionality section
+#   Non-blocking socket read
+#   Reconnect on connection loss, provided it's not actual network outage
+#   Changed 'data' to 'command' in functions where pertinent
 ###############################################################################
 
 
@@ -19,6 +22,7 @@ import getpass
 import json
 import logging
 import re
+import select
 import socket
 import ssl
 import time
@@ -180,18 +184,6 @@ class Bot:
         self.send("PRIVMSG {} :{}".format(channel, msg))
         self.ircprint(msg, "shanghai_doll", channel)
 
-    def echo(self,
-             msg:     Message = None,
-             channel: Channel = None):
-        """Echos a message to the channel.
-        Example syntax: ,echo <message>
-        """
-        if msg is None:
-            msg = self.message
-        if channel is None:
-            channel = self.match.group('chan')
-        self.say(msg, channel)
-
     def part(self,
              force:   Flag = False,
              channel: Channel = None):
@@ -249,7 +241,20 @@ class Bot:
         """Respond to PING, call parse if channel message"""
 
         # Decode data on receive to work with strings
-        data = bytes.decode(self.irc.recv(4096))
+        potential_readers = [self.irc]
+        ready_r, ready_w, in_error = select.select(
+                                        potential_readers,
+                                        [],
+                                        [],
+                                        0.5)
+        if ready_r:
+            data = self.irc.recv(4096)
+        else:
+            return
+        if len(data) == 0:
+            reconnect()
+        else:
+            data = bytes.decode(data, encoding="utf-8")
 
         # Respond to server PINGs to stay connected
         if data.startswith("PING"):
@@ -261,6 +266,13 @@ class Bot:
             self.parse()
         else:
             pass
+
+    def reconnect(self):
+        """Reconnect to server on connection loss"""
+        print("Connection lost, trying to reconnect now")
+        self.irc.shutdown(socket.SHUT_RDWR)
+        self.irc.close()
+        self.connect()
 
     def parse(self):
         """Parse data for commands"""
@@ -323,6 +335,7 @@ class Bot:
                  chan:    Channel = None,
                  msgtime: Time = None):
         """Print message readably to terminal with timestamp and channel"""
+        # TODO: Fix unicode encode error
         if msg is None:
             msg = self.match.group('msg')
         if user is None:
@@ -335,6 +348,18 @@ class Bot:
                                                                        user,
                                                                        msg,
                                                                        chan))
+
+    def echo(self,
+             message:     Message = None,
+             channel: Channel = None):
+        """Echos a message to the channel.
+        Example syntax: ,echo <message>
+        """
+        if message is None:
+            message = self.message
+        if channel is None:
+            channel = self.match.group('chan')
+        self.say(message, channel)
 
     def greplogs(self,
                  pattern: Regex = None,
@@ -356,18 +381,18 @@ class Bot:
         # send( result[-5:] )   <-- want to return the 5 most recent matches
 
     def addcommand(self,
-                   data: Command = None,
+                   command: Command = None,
                    channel: Channel = None):
         """Add or change channel-specific command.
         Example syntax: ,addcommand <command>
         """
-        if data is None:
-            data = self.message
+        if command is None:
+            command = self.message
         if channel is None:
             channel = self.match.group('chan')
 
         # Get the command to add
-        data = data.split(" ", maxsplit=1)
+        data = command.split(" ", maxsplit=1)
 
         # Add the command to the channel command list
         if data[0] not in self.syscoms:
@@ -379,18 +404,18 @@ class Bot:
             print("Command exists as a system command, ignored")
 
     def delcommand(self,
-                   data: Command = None,
+                   command: Command = None,
                    channel: Channel = None):
         """Delete a channel-specific command.
         Example syntax: ,delcommand <command>
         """
-        if data is None:
-            data = self.message
+        if command is None:
+            command = self.message
         if channel is None:
             channel = self.match.group('chan')
 
         # Get the command to remove
-        data = data.split(" ")[0]
+        data = command.split(" ")[0]
 
         # Remove the command from the channel command list
         try:
@@ -418,18 +443,18 @@ class Bot:
             self.say(buf, channel)
 
     def commandhelp(self,
-                    data: Command = None,
+                    command: Command = None,
                     channel: Channel = None):
         """Provides usage help for a command.
         Example syntax: ,help <command>
         """
-        if data is None:
-            data = self.message
+        if command is None:
+            command = self.message
         if channel is None:
             channel = self.match.group('chan')
 
         # Make sure only checking for one command
-        data = data.split(" ")[0]
+        data = command.split(" ")[0]
 
         try:
             self.say(self.syscoms[data].__doc__, channel)
