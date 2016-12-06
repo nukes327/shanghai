@@ -26,6 +26,7 @@ import select
 import socket
 import ssl
 import time
+import fuckit
 
 from linkscanning import *
 
@@ -344,10 +345,11 @@ class Bot:
             chan = self.match.group('chan')
         if msgtime is None:
             msgtime = time.localtime()
-        print("[{3}/{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
-                                                                       user,
-                                                                       msg,
-                                                                       chan))
+        with fuckit:
+            print("[{3}/{0[3]:02d}:{0[4]:02d}:{0[5]:02d}] {1}: {2}".format(msgtime,
+                                                                           user,
+                                                                           msg,
+                                                                           chan))
 
     def echo(self,
              message:     Message = None,
