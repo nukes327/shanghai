@@ -8,12 +8,11 @@
 # (4) Make parse case-insensitive
 # (5) Clean up error checking so it checks for specific errors
 # (7) LOGGING EVERYTHING
+# (8) Time ==> Datetime
+# (9) Python 3.6 string format changes
 # ---------
 # Recent Changes:
-#   Moved echo to additional functionality section
-#   Non-blocking socket read
-#   Reconnect on connection loss, provided it's not actual network outage
-#   Changed 'data' to 'command' in functions where pertinent
+#   Added some comments for python 3.6 format strings
 ###############################################################################
 
 
@@ -135,21 +134,24 @@ class Bot:
         """Send encoded message to irc socket"""
         # Encode to bytes on send
         self.irc.send(str.encode("{}\r\n".format(cmd)))
+        # self.irc.send(str.encode(f"{cmd}\r\n"))
 
     def connect(self):
         """Connect to given irc server"""
         default = self.config["DEFAULT"]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((default["server"], int(default["port"])))
-        if default.getboolean("ssl"):
+        s.connect((default['server'], int(default['port'])))
+        if default.getboolean('ssl'):
             context = ssl.create_default_context()
-            self.irc = context.wrap_socket(s, server_hostname=default["server"])
+            self.irc = context.wrap_socket(s, server_hostname=default['server'])
         else:
             self.irc = s
         if default["password"]:
-            self.send("PASS {}".format(default["password"]))
-        self.send("NICK {}".format(default["nick"]))
-        self.send("USER {0} {0} {0} :{0}".format(default["nick"]))
+            self.send("PASS {}".format(default['password']))
+            # self.send(f"PASS {default['password']}")
+        self.send("NICK {}".format(default['nick']))
+        # self.send(f"NICK {default['nick']}")
+        self.send("USER {0} {0} {0} :{0}".format(default['nick']))
 
     def join(self,
              force:   Flag = False,
@@ -161,10 +163,13 @@ class Bot:
             channel = self.message
 
         self.send("JOIN {}".format(channel))
+        # self.send(f"JOIN {channel}")
         print("Connected to channel {}".format(channel))
+        # print(f"Connected to channel {channel}")
 
         # Verify a section exists for the channel, and create it if not
         print("Verifying command list for {}".format(channel))
+        # print(f"Verifying command list for {channel}")
         try:
             self.chancoms.add_section(channel)
         except configparser.DuplicateSectionError:
@@ -173,6 +178,7 @@ class Bot:
             print("Created new entry for channel...")
         finally:
             print("Ready to go for {}".format(channel))
+            # print(f"Ready to go for {channel}")
 
     def say(self,
             msg:     Message = None,
@@ -183,6 +189,7 @@ class Bot:
         if channel is None:
             channel = self.match.group('chan')
         self.send("PRIVMSG {} :{}".format(channel, msg))
+        # self.send(f"PRIVMSG {channel} :{msg}")
         self.ircprint(msg, "shanghai_doll", channel)
 
     def part(self,
@@ -197,6 +204,7 @@ class Bot:
         if channel is None:
             channel = self.match.group('chan')
         self.send("PART {}".format(channel))
+        # self.send(f"PART {channel}")
 
     def quit(self,
              force: Flag = False):
@@ -259,7 +267,9 @@ class Bot:
 
         # Respond to server PINGs to stay connected
         if data.startswith("PING"):
-            self.send("PONG " + data.split(" ")[1])
+            pong = data.split(' ')[1]
+            self.send("PONG {}".format(pong))
+            # self.send(f"PONG {pong}")
 
         # If there's a PRIVMSG parse the data
         self.match = self.msplit.search(data)
@@ -307,6 +317,7 @@ class Bot:
         if user not in self.users:
             self.users[user] = {}
             print("User {} added to userlist".format(user))
+            # print(f"User {user} added to userlist")
 
         # Only check for commands if the message starts with an !
         if msg.startswith(self.config["DEFAULT"]["prefix"]):
