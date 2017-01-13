@@ -64,8 +64,7 @@ class Bot:
                  chancoms: Filename = "commands.ini"):
         self.config = configparser.ConfigParser()
         try:
-            with open(config) as f:
-                self.config.read_file(f)
+            with open(config) as f: self.config.read_file(f)
         except FileNotFoundError:
             default = self.config["DEFAULT"]
             default["owner"] = input("Default bot owner: ")
@@ -133,8 +132,8 @@ class Bot:
              cmd: Message):
         """Send encoded message to irc socket"""
         # Encode to bytes on send
-        self.irc.send(str.encode("{}\r\n".format(cmd)))
-        # self.irc.send(str.encode(f"{cmd}\r\n"))
+        # self.irc.send(str.encode("{}\r\n".format(cmd)))
+        self.irc.send(str.encode(f"{cmd}\r\n"))
 
     def connect(self):
         """Connect to given irc server"""
@@ -147,10 +146,10 @@ class Bot:
         else:
             self.irc = s
         if default["password"]:
-            self.send("PASS {}".format(default['password']))
-            # self.send(f"PASS {default['password']}")
-        self.send("NICK {}".format(default['nick']))
-        # self.send(f"NICK {default['nick']}")
+            # self.send("PASS {}".format(default['password']))
+            self.send(f"PASS {default['password']}")
+        # self.send("NICK {}".format(default['nick']))
+        self.send(f"NICK {default['nick']}")
         self.send("USER {0} {0} {0} :{0}".format(default['nick']))
 
     def join(self,
@@ -162,14 +161,14 @@ class Bot:
         if channel is None:
             channel = self.message
 
-        self.send("JOIN {}".format(channel))
-        # self.send(f"JOIN {channel}")
-        print("Connected to channel {}".format(channel))
-        # print(f"Connected to channel {channel}")
+        # self.send("JOIN {}".format(channel))
+        self.send(f"JOIN {channel}")
+        # print("Connected to channel {}".format(channel))
+        print(f"Connected to channel {channel}")
 
         # Verify a section exists for the channel, and create it if not
-        print("Verifying command list for {}".format(channel))
-        # print(f"Verifying command list for {channel}")
+        # print("Verifying command list for {}".format(channel))
+        print(f"Verifying command list for {channel}")
         try:
             self.chancoms.add_section(channel)
         except configparser.DuplicateSectionError:
@@ -177,8 +176,8 @@ class Bot:
         else:
             print("Created new entry for channel...")
         finally:
-            print("Ready to go for {}".format(channel))
-            # print(f"Ready to go for {channel}")
+            # print("Ready to go for {}".format(channel))
+            print(f"Ready to go for {channel}")
 
     def say(self,
             msg:     Message = None,
@@ -188,8 +187,8 @@ class Bot:
             msg = self.message
         if channel is None:
             channel = self.match.group('chan')
-        self.send("PRIVMSG {} :{}".format(channel, msg))
-        # self.send(f"PRIVMSG {channel} :{msg}")
+        # self.send("PRIVMSG {} :{}".format(channel, msg))
+        self.send(f"PRIVMSG {channel} :{msg}")
         self.ircprint(msg, "shanghai_doll", channel)
 
     def part(self,
@@ -203,8 +202,8 @@ class Bot:
                                      self.match.group('user'))
         if channel is None:
             channel = self.match.group('chan')
-        self.send("PART {}".format(channel))
-        # self.send(f"PART {channel}")
+        # self.send("PART {}".format(channel))
+        self.send(f"PART {channel}")
 
     def quit(self,
              force: Flag = False):
@@ -268,8 +267,8 @@ class Bot:
         # Respond to server PINGs to stay connected
         if data.startswith("PING"):
             pong = data.split(' ')[1]
-            self.send("PONG {}".format(pong))
-            # self.send(f"PONG {pong}")
+            # self.send("PONG {}".format(pong))
+            self.send(f"PONG {pong}")
 
         # If there's a PRIVMSG parse the data
         self.match = self.msplit.search(data)
@@ -316,8 +315,8 @@ class Bot:
         # Add the user to the userlist if they're not present already
         if user not in self.users:
             self.users[user] = {}
-            print("User {} added to userlist".format(user))
-            # print(f"User {user} added to userlist")
+            # print("User {} added to userlist".format(user))
+            print(f"User {user} added to userlist")
 
         # Only check for commands if the message starts with an !
         if msg.startswith(self.config["DEFAULT"]["prefix"]):
