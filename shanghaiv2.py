@@ -21,13 +21,13 @@ import getpass
 import json
 import logging
 import re
-import select
 import socket
 import ssl
 import time
 import fuckit
 
-from linkscanning import *
+# from linkscanning import *
+from linkscanning import LinkScanner
 
 
 class ShanghaiError(Exception):
@@ -37,10 +37,7 @@ class ShanghaiError(Exception):
 
 class ClearanceError(ShanghaiError):
     """Somebody tried to run something above their clearance"""
-    def __init__(self,
-                 *args,
-                 user: str,
-                 func: str):
+    def __init__(self, *, user: str, func: str):
         self.user = user
         self.func = func
 
@@ -121,6 +118,8 @@ class Bot:
         # Message used as default for some method calls
         self.message = ""
 
+        self.irc = None
+
         self.loadlist()
 
         self.logger = logging.getLogger('shanghai')
@@ -140,6 +139,7 @@ class Bot:
         default = self.config["DEFAULT"]
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((default['server'], int(default['port'])))
+        s.settimeout(0.5)
         if default.getboolean('ssl'):
             context = ssl.create_default_context()
             self.irc = context.wrap_socket(s, server_hostname=default['server'])
@@ -153,7 +153,7 @@ class Bot:
         self.send("USER {0} {0} {0} :{0}".format(default['nick']))
 
     def join(self,
-             force:   Flag = False,
+             force: Flag = False,
              channel: Channel = None):
         """Join and load commands for given channel.
         Example syntax: ,join <channel>
@@ -180,7 +180,7 @@ class Bot:
             print(f"Ready to go for {channel}")
 
     def say(self,
-            msg:     Message = None,
+            msg: Message = None,
             channel: Channel = None):
         """Send message to channel"""
         if msg is None:
@@ -192,14 +192,14 @@ class Bot:
         self.ircprint(msg, "shanghai_doll", channel)
 
     def part(self,
-             force:   Flag = False,
+             force: Flag = False,
              channel: Channel = None):
         """Leave the current channel.
         Example syntax: ,part
         """
         if not force and self.match.group('user') != self.config["DEFAULT"]["owner"]:
-                raise ClearanceError("Unauthorized user",
-                                     self.match.group('user'))
+            raise ClearanceError(user=self.match.group('user'),
+                                 func='part')
         if channel is None:
             channel = self.match.group('chan')
         # self.send("PART {}".format(channel))
@@ -249,18 +249,12 @@ class Bot:
         """Respond to PING, call parse if channel message"""
 
         # Decode data on receive to work with strings
-        potential_readers = [self.irc]
-        ready_r, ready_w, in_error = select.select(
-                                        potential_readers,
-                                        [],
-                                        [],
-                                        0.5)
-        if ready_r:
+        try:
             data = self.irc.recv(4096)
-        else:
+        except socket.timeout:
             return
-        if len(data) == 0:
-            reconnect()
+        if not data:
+            self.reconnect()
         else:
             data = bytes.decode(data, encoding="utf-8")
 
@@ -308,9 +302,9 @@ class Bot:
                 print(inst.args)
                 print(inst)  # TODO (7)
             else:
-                for ln in message:
-                    print(ln)
-                    self.say(ln, chan)
+                for line in message:
+                    print(line)
+                    self.say(line, chan)
 
         # Add the user to the userlist if they're not present already
         if user not in self.users:
@@ -341,9 +335,9 @@ class Bot:
 # Extra functionality
 
     def ircprint(self,
-                 msg:     Message = None,
-                 user:    User = None,
-                 chan:    Channel = None,
+                 msg: Message = None,
+                 user: User = None,
+                 chan: Channel = None,
                  msgtime: Time = None):
         """Print message readably to terminal with timestamp and channel"""
         # TODO: Fix unicode encode error
@@ -362,7 +356,7 @@ class Bot:
                                                                            chan))
 
     def echo(self,
-             message:     Message = None,
+             message: Message = None,
              channel: Channel = None):
         """Echos a message to the channel.
         Example syntax: ,echo <message>
@@ -381,7 +375,6 @@ class Bot:
             pattern = self.message
         if channel is None:
             channel = self.match.group('chan')
-        pass
         # pseudocode:
         # result = []
         # for filename in os get log files:
