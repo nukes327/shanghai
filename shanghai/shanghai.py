@@ -14,7 +14,6 @@ TODO:
 import configparser
 import getpass
 import logging
-from logging.handlers import RotatingFileHandler
 import re
 import socket
 import ssl
@@ -63,19 +62,8 @@ class Bot:
         self.match = None
         self.message = None
         self.irc = None
-        self.logger = self.logging_setup()
-        self.logger.info('This is still a test')
+        self.logger = logging.getLogger(__name__)
         self.scanner = None
-
-    def logging_setup(self):
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
-        handler = RotatingFileHandler('shanghai.log', 'a', 10 * 1024 * 1024, 10)
-        handler.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
 
 if __name__ == '__main__':
     shanghai = Bot()

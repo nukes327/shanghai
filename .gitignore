@@ -1,7 +1,6 @@
 *.txt
-\#*
 __pycache__
-run.py
 *.log
 *.ini
+*.swp
 deprecated/
