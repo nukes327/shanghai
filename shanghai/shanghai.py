@@ -22,7 +22,7 @@ import json
 
 import fuckit
 
-# from linkscanning import LinkScanner
+from . import scanning
 from . import exceptions
 
 
@@ -53,6 +53,7 @@ class Bot:
                  config: Filename = "shanghai.ini",
                  chancoms: Filename = "commands.ini"):
         self.config = configparser.ConfigParser()
+        self.apiconf = configparser.ConfigParser()
         # Load config here
         self.users = None
         self.chancoms = configparser.ConfigParser()
