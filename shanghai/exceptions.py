@@ -51,5 +51,11 @@ class APIError(LinkScanError):
     def __init__(self, *,
                  error: str = None):
         super(APIError, self).__init__(error=f'Problem with an API: {error}')
-        self.link = link
+        self.error = error
+
+class ShangSockError(ShanghaiError):
+    """An error with the socket"""
+    def __init__(self, *,
+                 error: str = None):
+        super(ShangSockError, self).__init__(error=f'ShangSockError - {error}')
         self.error = error

@@ -22,7 +22,7 @@ import json
 
 import fuckit
 
-from . import scanning
+from . import scraping
 from . import exceptions
 
 
@@ -64,7 +64,6 @@ class Bot:
         self.message = None
         self.irc = None
         self.logger = logging.getLogger(__name__)
+        self.logger.info("This is a test, should only go to file")
+        self.logger.warning("This is also a test, should go to file and stderr")
         self.scanner = None
-
-if __name__ == '__main__':
-    shanghai = Bot()
