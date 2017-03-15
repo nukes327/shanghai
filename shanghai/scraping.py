@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Contains methods related to scanning URLs
+"""Contains methods related to scraping webpages"""
 
-"""
-
+import configparser
 import logging
 import re
 
@@ -18,14 +17,21 @@ from .exceptions import (
 _PIXIV = re.compile(r'pixiv.*illust_id(\d+)')
 
 
-def scan(link: str, apis) -> str:
-    """Scans a link and returns pertinent info
+def scrape(link: str, apis: configparser.ConfigParser) -> str:
+    """Checks a link and returns pertinent info
 
     Args:
         link: The link to be scanned
+        apis: A config parser with relevant information for
+            api usage (usernames and passwords mostly)
 
     Returns:
         A string with info relating to the link for the bot to use
+
+    Notes:
+        The apis arg is like to change when I've figured out
+        a good way to pass a dictionary rather than the whole
+        honkin parser
 
     """
     logger = logging.getLogger(__name__)
@@ -34,13 +40,16 @@ def scan(link: str, apis) -> str:
     try:
         response = get_response(link)
     except RequestError as inst:
-        logger.error(inst)
+        logger.error('There was an error making the request', exc_info=inst)
         message = inst
     else:
         logger.info(f'Request successful for {link}')
         message = []
         if response.headers['content-type'] == 'text/html':
-            message.append(fetch_title(response))
+            try:
+                message.append(fetch_title(response))
+            except TitleError:
+                message.append('No title found for the linked page')
             try:
                 message.append(
                     pixiv_tags(_PIXIV.search(link).group(1), apis['pixiv']))
@@ -48,6 +57,8 @@ def scan(link: str, apis) -> str:
                 message.append('Failed to fetch illustration tags')
             except AttributeError:
                 pass
+        else:
+            message.append(fetch_info(response))
         message = '\n'.join(message)
     return message
 

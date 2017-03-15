@@ -12,18 +12,15 @@ TODO:
 """
 
 import configparser
-import getpass
 import logging
 import re
-import socket
-import ssl
 import time
-import json
 
-import fuckit
+# import fuckit
 
-from . import scraping
+from . import connection
 from . import exceptions
+from . import scraping
 
 
 _MSPLIT = re.compile(r"""
@@ -50,20 +47,113 @@ class Bot:
     User = str
 
     def __init__(self,
-                 config: Filename = "shanghai.ini",
-                 chancoms: Filename = "commands.ini"):
+                 config: Filename = 'config/shanghai.ini',
+                 chancoms: Filename = 'config/commands.ini',
+                 apis: Filename = 'config/apis.ini'):
+        logger = logging.getLogger(__name__)
+
         self.config = configparser.ConfigParser()
+        with open(config) as conffile:
+            self.config.read_file(conffile)
+        logger.info('Primary shanghai config loaded')
+
         self.apiconf = configparser.ConfigParser()
-        # Load config here
-        self.users = None
+        with open(apis) as apisfile:
+            self.apiconf.read_file(apisfile)
+        logger.info('Apis config loaded')
+
         self.chancoms = configparser.ConfigParser()
-        # Load channel commands here
+        with open(chancoms) as comsfile:
+            self.chancoms.read_file(comsfile)
+        logger.info('Channel specific command config loaded')
+
+        # Saving the channel commands ini file location to write later
+        # This is almost certainly going to get changed eventually, as it feels sloppy
         self.chanfile = chancoms
-        self.syscoms = None # Methods dictionary here
+
+        self.syscoms = {'quit': self.quit,
+                        'join': self.join}
         self.match = None
         self.message = None
-        self.irc = None
-        self.logger = logging.getLogger(__name__)
-        self.logger.info("This is a test, should only go to file")
-        self.logger.warning("This is also a test, should go to file and stderr")
-        self.scanner = None
+
+        default = self.config['DEFAULT']
+        self.irc = connection.ShangSock(
+            default['server'], default.getint('port'), default.getboolean('ssl'))
+        self.connect()
+
+    def connect(self):
+        """Connects to and sends necessary information to IRC server per protocol
+
+        Notes:
+            The response checking in here is kinda hacky with regexes right now
+            It'll be changed when I've got a proper scanner/parser for IRC ABNF
+            implemented and working
+
+        """
+        logger = logging.getLogger(__name__)
+        default = self.config['DEFAULT']
+
+        self.irc.connect()
+        logger.info('Socket bound to server, beginning connection protocol')
+
+        if default['password']:
+            logger.debug(f'Sending password, password is {default["password"]}')
+            self.irc.send(f'PASS {default["password"]}\r\n')
+        else:
+            logger.debug('No connection password is set, not using')
+
+        validnick = False
+        logger.debug(f'Entering nick validation loop, attempting {default["nick"]}')
+        while not validnick:
+            logger.debug(f'Setting nick to {default["nick"]}')
+            self.irc.send(f'NICK {default["nick"]}\r\n')
+            response = self.irc.receive()
+            if response:
+                if re.search(r'\b433', response):
+                    logger.warning(f'Nick in use: {default["nick"]}')
+                    default['nick'] = input('Input a new bot nick: ')
+                    logger.info(f'New nick input: {default["nick"]}')
+                else:
+                    logger.debug(f'Unexpected message {response}, but continuing')
+                    validnick = True
+            else:
+                validnick = True
+                logger.info(f'Server accepted nick: {default["nick"]}')
+
+        logger.debug(f'Setting user information, realname {default["realname"]}')
+        self.irc.send(f'USER {default["nick"]} 0 * :{default["realname"]}\r\n')
+
+        success = False
+        while not success:
+            logger.debug(f'Waiting for server to verify auth success...')
+            response = self.irc.receive()
+            logger.debug(f'Received {response}')
+            if response:
+                if re.search(r'\b001', response):
+                    logger.debug(f'Server sent welcome reply, connection complete')
+                    success = True
+                elif re.search(r'\b422', response):
+                    logger.debug('Server sent NOMOTD, but havent received welcome')
+                elif re.search(r'\b376', response):
+                    logger.debug('Server sent ENDOFMOTD, but havent received welcome')
+                else:
+                    logger.debug('Server sent an unexpected message')
+        logger.info('Server authentication completed')
+
+    def join(self, channel: str = None):
+        logger = logging.getLogger(__name__)
+        logger.info(f'Joining channel {channel}')
+        self.irc.send(f'JOIN {channel}\r\n')
+
+    def quit(self):
+        logger = logging.getLogger(__name__)
+        logger.info('Sending QUIT message')
+        self.irc.send('QUIT\r\n')
+        self.irc.disconnect()
+        logger.info('Halting execution')
+        exit()
+
+    def send(self, message: str = None, channel: str = None):
+        logger = logging.getLogger(__name__)
+        logger.debug(f'Sending {message} to {channel}')
+        self.irc.send(f'PRIVMSG {channel} :{message}\r\n')

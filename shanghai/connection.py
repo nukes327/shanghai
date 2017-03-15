@@ -32,6 +32,7 @@ class ShangSock:
         self.port = port
         self.ssl = ssl_flag
         self.timeout = timeout
+        self.__receive_cache = []
 
     def connect(self) -> None:
         """Creates socket and binds it to given server and port
@@ -59,7 +60,7 @@ class ShangSock:
             try:
                 self.sock = context.wrap_socket(self.sock, server_hostname=self.server)
             except socket.timeout as inst:
-                logger.warning('SSL handshake attempt timed out', exc_info-inst)
+                logger.warning('SSL handshake attempt timed out', exc_info=inst)
                 self.reconnect()
             logger.info('SSL Socket ready for use')
         else:
@@ -116,11 +117,8 @@ class ShangSock:
             logger.debug(f'Total sent: {total}')
         logger.debug('Send complete')
 
-    def receive(self, *, cache: list = []) -> str:
+    def receive(self) -> str:
         """Receives a delimited IRC message from the socket
-
-        Args:
-            cache: A default empty list used for caching of excess received data
 
         Returns:
             A *single* message from the socket as a string,
@@ -133,15 +131,15 @@ class ShangSock:
 
         """
         logger = logging.getLogger(__name__)
-        logger.debug(f'Current cache: {cache}')
+        logger.debug(f'Current cache: {self.__receive_cache}')
 
-        if cache:
+        if self.__receive_cache:
             logger.debug('More data waiting in cache, checking it first')
-            message = ''.join(cache).partition('\r\n')
+            message = ''.join(self.__receive_cache).partition('\r\n')
             if message[1]:
                 logger.debug('Complete message was remaining in cache')
                 logger.debug(f'Caching {message[2]}')
-                cache = [message[2]]
+                self.__receive_cache = [message[2]]
                 logger.debug(f'Returning {message[0]}')
                 return ''.join([message[0], message[1]])
         else:
@@ -155,21 +153,21 @@ class ShangSock:
             return ''
         if not data:
             logger.warning('Unexpected disconnection while attempting to receive data')
-            cache = []
+            self.__receive_cache = []
             raise ShangSockError(error='Unexpected Disconnect')
 
         logger.debug('Data received, merging with cache and separating by CRLF')
         data = bytes.decode(data, encoding='utf-8')
-        message = ''.join(cache)
+        message = ''.join(self.__receive_cache)
         message = ''.join([message, data]).partition('\r\n')
         if message[1]:
             logger.debug('CRLF present, so a complete message is ready')
             logger.debug(f'Caching {message[2]}')
-            cache = [message[2]]
+            self.__receive_cache = [message[2]]
             logger.debug(f'Returning {message[0]}')
             return ''.join([message[0], message[1]])
         else:
             logger.debug('No CRLF present, so there is no complete message ready')
             logger.debug(f'Caching {message[0]}')
-            cache = [message[0]]
+            self.__receive_cache = [message[0]]
         return ''

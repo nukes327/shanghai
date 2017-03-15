@@ -13,6 +13,7 @@ import logging
 import logging.config
 import os
 import sys
+from time import sleep
 
 import shanghai.shanghai as shanghai
 
@@ -23,6 +24,7 @@ def init_shanghai():
     config['DEFAULT'] = {
         'owner': '',
         'nick': '',
+        'realname': '',
         'password': '',
         'prefix': ',',
         'server': '',
@@ -66,7 +68,18 @@ def init_logging():
         config.write(conffile)
 
 def main():
-    """Main loop/code for initializing and running the bot"""
+    """Main loop/code for initializing and running the bot
+
+    Notes:
+        While this does check for presence of the necessary inis,
+        it does not check for syntactical validity of any of the
+        configs other than the logging config, as it is actually
+        loaded right away
+        This may be changed later to load the config parsers now,
+        and init the bot with those rather than the bot loading the
+        configs itself later
+
+    """
     if not os.path.isfile('config/logging.ini'):
         print('No logging file found, making a new one', file=sys.stderr)
         init_logging()
