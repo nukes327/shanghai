@@ -56,7 +56,11 @@ class ShangSock:
         if self.ssl:
             logger.info('Creating an SSL context and wrapping the socket')
             context = ssl.create_default_context()
-            self.sock = context.wrap_socket(self.sock, server_hostname=self.server)
+            try:
+                self.sock = context.wrap_socket(self.sock, server_hostname=self.server)
+            except socket.timeout as inst:
+                logger.warning('SSL handshake attempt timed out', exc_info-inst)
+                self.reconnect()
             logger.info('SSL Socket ready for use')
         else:
             logger.info('Socket ready for use')
@@ -129,19 +133,25 @@ class ShangSock:
 
         """
         logger = logging.getLogger(__name__)
+        logger.debug(f'Current cache: {cache}')
 
         if cache:
             logger.debug('More data waiting in cache, checking it first')
             message = ''.join(cache).partition('\r\n')
             if message[1]:
-                cache = message[2]
+                logger.debug('Complete message was remaining in cache')
+                logger.debug(f'Caching {message[2]}')
+                cache = [message[2]]
+                logger.debug(f'Returning {message[0]}')
                 return ''.join([message[0], message[1]])
+        else:
+            logger.debug('No cached data present')
 
         try:
             logger.debug('Receiving from socket')
             data = self.sock.recv(4096)
-        except socket.timeout as inst:
-            logger.debug('Socket timeout, nothing to receive', exc_info=inst)
+        except socket.timeout:
+            logger.debug('Socket timeout, nothing to receive')
             return ''
         if not data:
             logger.warning('Unexpected disconnection while attempting to receive data')
@@ -149,10 +159,17 @@ class ShangSock:
             raise ShangSockError(error='Unexpected Disconnect')
 
         logger.debug('Data received, merging with cache and separating by CRLF')
+        data = bytes.decode(data, encoding='utf-8')
         message = ''.join(cache)
         message = ''.join([message, data]).partition('\r\n')
         if message[1]:
-            cache = message[2]
+            logger.debug('CRLF present, so a complete message is ready')
+            logger.debug(f'Caching {message[2]}')
+            cache = [message[2]]
+            logger.debug(f'Returning {message[0]}')
             return ''.join([message[0], message[1]])
-        cache = message[0]
+        else:
+            logger.debug('No CRLF present, so there is no complete message ready')
+            logger.debug(f'Caching {message[0]}')
+            cache = [message[0]]
         return ''
