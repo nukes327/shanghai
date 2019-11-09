@@ -12,10 +12,12 @@ import configparser
 import logging
 import logging.config
 import os
+from pathlib import Path
 import sys
 from time import sleep
 
 import shanghai.shanghai as shanghai
+from shanghai.exceptions import ShanghaiError
 
 
 def init_shanghai():
@@ -80,18 +82,49 @@ def main():
         configs itself later
 
     """
-    if not os.path.isfile('config/logging.ini'):
-        print('No logging file found, making a new one', file=sys.stderr)
-        init_logging()
-    try:
-        logging.config.fileConfig('config/logging.ini')
-    except KeyError as inst:
-        print(f'There was an error reading the logging config: {inst}',
-              'Renaming the old one and generating a new one',
-              sep='\n', file=sys.stderr)
-        os.replace('config/logging.ini', 'config/logging.ini.old')
-        init_logging()
-        logging.config.fileConfig('config/logging.ini')
+    while True:
+        try:
+            logging.config.fileConfig('config/logging.ini')
+        except KeyError as inst:
+            print(f'There was an error reading the logging config: {inst}',
+                  'Proceding with recovery',
+                  sep='\n', file=sys.stderr)
+            try:
+                os.replace('config/logging.ini', 'config/logging.ini.old')
+            except FileNotFoundError:
+                try:
+                    os.mkdir('config')
+                except FileExistsError:
+                    pass
+                else:
+                    print('Config directory was absent, created and continuing',
+                          file=sys.stderr)
+            else:
+                print('Renamed old file to logging.ini.old',
+                      file=sys.stderr)
+            finally:
+                print('Creating new logging.ini',
+                      file=sys.stderr)
+                init_logging()
+            continue
+        except FileNotFoundError as inst:
+            print(f'There was an error locating the log file or directory: {inst}',
+                  file=sys.stderr)
+            try:
+                os.mkdir('logs')
+            except FileExistsError as inst:
+                # TODO: Dump traceback to a file, this shouldn't be reached
+                # NOTE: Maybe this can be reached if the log file exists and is read-only or inaccessible? Test later
+                raise ShanghaiError(f'Something unexpected went wrong, please contact repository maintainer - {inst}')
+            else:
+                print('Log directory was absent, created and continuing',
+                      file=sys.stderr)
+            continue
+        except Exception as inst:
+            raise ShanghaiError(f'Something unexpected went wrong, please contact repository maintainer - {inst}')
+        else:
+            break
+
     logger = logging.getLogger(__name__)
     logger.info('Logging configuration loaded')
     if not os.path.isfile('config/apis.ini'):
