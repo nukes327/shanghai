@@ -1,61 +1,121 @@
 #!/usr/bin/env python3
-"""Contains the exceptions for the Shanghai bot"""
+"""Contains the exceptions for the Shanghai bot."""
+
 
 class ShanghaiError(Exception):
-    """Base Error Class"""
+    """Base shanghai exception class."""
+
     def __init__(self, *,
                  error: str = None,
                  message: str = None):
+        """Initialize ShanghaiError class.
+
+        Args:
+            error:   description of error that occurred
+            message: final visible error message
+
+        """
         if message is None:
             message = f'Shanghai encountered an error - {error}'
         super(ShanghaiError, self).__init__(message)
         self.error = error
 
+
 class ClearanceError(ShanghaiError):
-    """Someone tried to run something over their clearance"""
+    """Raise for clearance violations."""
+
     def __init__(self, *,
                  user: str = None,
                  func: str = None):
+        """Initialize ClearanceError class.
+
+        Args:
+            user: user that attempted clearance violation
+            func: command that user attempted to execute
+
+        """
         super(ClearanceError, self).__init__(
             error=f'ClearanceError - User: {user}, Command: {func}')
         self.user = user
         self.func = func
 
+
 class LinkScanError(ShanghaiError):
-    """Base Link Scanning Error Class"""
+    """Base link scanning exception class."""
+
     def __init__(self, *,
                  error: str = None):
+        """Initialize LinkScanError class.
+
+        Args:
+            error: description of error that occurred
+
+        """
         super(LinkScanError, self).__init__(error=f'LinkScanError - {error}')
         self.error = error
 
+
 class TitleError(LinkScanError):
-    """Error in fetching title"""
+    """Raise for exception in fetching page title."""
+
     def __init__(self, *,
                  link: str = None,
                  error: str = None):
+        """Initialize TitleError class.
+
+        Args:
+            link:  page that title could not be fetched from
+            error: reason title fetch failed
+
+        """
         super(TitleError, self).__init__(error=f'Failed to get title for {link}: {error}')
         self.link = link
         self.error = error
 
+
 class RequestError(LinkScanError):
-    """Error in GET request"""
+    """Raise for exception in GET request."""
+
     def __init__(self, *,
                  link: str = None,
                  error: str = None):
+        """Initialize RequestError class.
+
+        Args:
+            link:  page that failed GET request
+            error: reason GET failed
+
+        """
         super(RequestError, self).__init__(error=f'Get request failed for {link}: {error}')
         self.link = link
         self.error = error
 
+
 class APIError(LinkScanError):
-    """Error with an API"""
+    """Raise for exception with an API."""
+
     def __init__(self, *,
                  error: str = None):
+        """Initialize APIError class.
+
+        Args:
+            error: exception that occurred with API
+
+        """
         super(APIError, self).__init__(error=f'Problem with an API: {error}')
         self.error = error
 
+
 class ShangSockError(ShanghaiError):
-    """An error with the socket"""
+    """Raise for exception with socket."""
+
     def __init__(self, *,
                  error: str = None):
+        """Initialize ShangSockError class.
+
+        Args:
+            error: exception that occurred with socket
+
+        """
         super(ShangSockError, self).__init__(error=f'ShangSockError - {error}')
         self.error = error

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Contains methods that reference APIs used by the bot
-
-"""
+"""Contains methods that reference APIs used by bot."""
 
 import configparser
 from functools import lru_cache
@@ -14,7 +12,7 @@ from .exceptions import APIError
 
 @lru_cache(maxsize=32)
 def pixiv_tags(illust_id: int, conf: configparser.SectionProxy) -> str:
-    """Fetches and returns illustration tags from pixiv
+    """Fetch and return illustration tags from pixiv.
 
     Args:
         illust_id: The ID of the illustration

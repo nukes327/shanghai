@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""What's actually run to use the bot
+"""Main file used to run bot.
 
 Notes:
     This script generates missing config files as necessary
@@ -21,7 +21,7 @@ from shanghai.exceptions import ShanghaiError
 
 
 def init_logging() -> None:
-    """Check and recovery process for logging preparation"""
+    """Check and recovery process for logging preparation."""
     while True:
         try:
             logging.config.fileConfig('config/logging.ini')
@@ -38,7 +38,7 @@ def init_logging() -> None:
 
 
 def logging_config_recovery(issue: KeyError) -> None:
-    """Recovery checks and actions for accessing the logging configuration"""
+    """Recovery checks and actions for accessing the logging configuration."""
     print(f'There was an error reading the logging config: {issue}',
           'Proceding with recovery',
           sep='\n', file=sys.stderr)
@@ -62,7 +62,7 @@ def logging_config_recovery(issue: KeyError) -> None:
 
 
 def logging_logfile_recovery(issue: FileNotFoundError) -> None:
-    """Recovery checks and actions for accessing the logfile"""
+    """Recovery checks and actions for accessing the logfile."""
     print(f'There was an error locating the log file or directory: {issue}',
           file=sys.stderr)
     try:
@@ -75,7 +75,7 @@ def logging_logfile_recovery(issue: FileNotFoundError) -> None:
 
 
 def create_logging_config() -> None:
-    """Generate a standard logging config file"""
+    """Generate a standard logging config file."""
     config = configparser.ConfigParser()
     config['loggers'] = {'keys': 'root'}
     config['handlers'] = {'keys': 'systemFileHandler, systemStreamHandler, errorFileHandler'}
@@ -106,7 +106,7 @@ def create_logging_config() -> None:
 
 
 def create_api_config() -> None:
-    """Create an empty apis config with necessary sections and keys"""
+    """Create an empty apis config with necessary sections and keys."""
     config = configparser.ConfigParser()
     config['pixiv'] = {
         'username': '',
@@ -116,7 +116,7 @@ def create_api_config() -> None:
 
 
 def create_shanghai_config() -> None:
-    """Create an empty shanghai config with necessary sections and keys"""
+    """Create an empty shanghai config with necessary sections and keys."""
     config = configparser.ConfigParser()
     config['DEFAULT'] = {
         'owner': '',
@@ -132,7 +132,7 @@ def create_shanghai_config() -> None:
 
 
 def main() -> None:
-    """Main loop/code for initializing and running the bot
+    """Initialize and run bot.
 
     Notes:
         While this does check for presence of the necessary inis,
@@ -155,7 +155,7 @@ def main() -> None:
         create_shanghai_config()
     else:
         logger.info('Necessary configuration files are present, continuing')
-        doll = shanghai.Bot()
+        shanghai.Bot()  # Verifying bot construction / initialization
 
 
 if __name__ == '__main__':

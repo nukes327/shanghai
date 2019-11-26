@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""This is the main module for Shanghai
+"""Main module for Shanghai.
 
 Shanghai is an IRC chat bot that will respond to simple commands, and
 scan incoming links to post information on the content to the channel.
@@ -38,6 +38,8 @@ _LINKS = re.compile(r"\bhttps?://[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
 
 
 class Bot:
+    """Main class to handle bot functionality."""
+
     Channel = str
     Command = str
     Filename = str
@@ -50,6 +52,14 @@ class Bot:
                  config: Filename = 'config/shanghai.ini',
                  chancoms: Filename = 'config/commands.ini',
                  apis: Filename = 'config/apis.ini'):
+        """Initialize bot.
+
+        Args:
+            config:   Bot specific config file path
+            chancoms: Channel commands config file path
+            apis:     API config file path
+
+        """
         logger = logging.getLogger(__name__)
 
         self.config = configparser.ConfigParser()
@@ -82,7 +92,7 @@ class Bot:
         self.connect()
 
     def connect(self):
-        """Connects to and sends necessary information to IRC server per protocol
+        """Connect to and send necessary information to IRC server per protocol.
 
         Notes:
             The response checking in here is kinda hacky with regexes right now
@@ -141,11 +151,18 @@ class Bot:
         logger.info('Server authentication completed')
 
     def join(self, channel: str = None):
+        """Join channel.
+
+        Args:
+            channel: Channel bot will attempt to join
+
+        """
         logger = logging.getLogger(__name__)
         logger.info(f'Joining channel {channel}')
         self.irc.send(f'JOIN {channel}\r\n')
 
     def quit(self):
+        """Quit server and stop bot."""
         logger = logging.getLogger(__name__)
         logger.info('Sending QUIT message')
         self.irc.send('QUIT\r\n')
@@ -154,6 +171,13 @@ class Bot:
         exit()
 
     def send(self, message: str = None, channel: str = None):
+        """Send message to channel.
+
+        Args:
+            message: Message to be sent
+            channel: Channel to send message to
+
+        """
         logger = logging.getLogger(__name__)
         logger.debug(f'Sending {message} to {channel}')
         self.irc.send(f'PRIVMSG {channel} :{message}\r\n')

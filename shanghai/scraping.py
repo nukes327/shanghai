@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contains methods related to scraping webpages"""
+"""Contains methods related to scraping webpages."""
 
 import configparser
 import logging
@@ -18,12 +18,12 @@ _PIXIV = re.compile(r'pixiv.*illust_id(\d+)')
 
 
 def scrape(link: str, apis: configparser.ConfigParser) -> str:
-    """Checks a link and returns pertinent info
+    """Check a link and return pertinent info.
 
     Args:
         link: The link to be scanned
         apis: A config parser with relevant information for
-            api usage (usernames and passwords mostly)
+              api usage (usernames and passwords mostly)
 
     Returns:
         A string with info relating to the link for the bot to use
@@ -62,8 +62,9 @@ def scrape(link: str, apis: configparser.ConfigParser) -> str:
         message = '\n'.join(message)
     return message
 
+
 def get_response(link: str) -> requests.Response:
-    """Manages the HTTP GET request for a link
+    """Manage the HTTP GET request for a link.
 
     Args:
         link: The URL for the request
@@ -88,8 +89,9 @@ def get_response(link: str) -> requests.Response:
     logger.info(f'No errors in request, returning')
     return response
 
+
 def fetch_title(response: requests.Response) -> str:
-    """Gets the title from HTML page source
+    """Get the title from HTML page source.
 
     Args:
         response: The Response object that includes the HTML source
@@ -108,8 +110,9 @@ def fetch_title(response: requests.Response) -> str:
     logger.info(f'Page title found for {response.url}: {title}')
     return ' '.join(['[title]', title])
 
+
 def fetch_info(response: requests.Response) -> str:
-    """Gets the size and type of the linked content
+    """Get the size and type of the linked content.
 
     Args:
         response: The Response object that includes the necessary headers
@@ -129,8 +132,9 @@ def fetch_info(response: requests.Response) -> str:
         message.append('?B')
     return ' '.join(message)
 
+
 def size_convert(size: int = 0) -> str:
-    """Converts a size in Bytes to something more readable
+    """Convert a size in bytes to human readable format.
 
     Args:
         size: The length of a file in bytes
