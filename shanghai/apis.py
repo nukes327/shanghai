@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """Contains methods that reference APIs used by bot."""
 
 import configparser

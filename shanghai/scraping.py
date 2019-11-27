@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """Contains methods related to scraping webpages."""
 
 import configparser

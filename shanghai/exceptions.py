@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """Contains the exceptions for the Shanghai bot."""
 
 

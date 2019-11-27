@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """Main module for Shanghai.
 
 Shanghai is an IRC chat bot that will respond to simple commands, and

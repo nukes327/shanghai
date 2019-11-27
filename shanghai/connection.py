@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """Connections module for Shanghai.
 
 Manages the connection to an IRC server,
