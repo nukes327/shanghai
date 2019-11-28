@@ -7,7 +7,7 @@ import configparser
 from functools import lru_cache
 import logging
 
-import pixivpy3
+import pixivpy3  # type: ignore
 
 from .exceptions import APIError
 

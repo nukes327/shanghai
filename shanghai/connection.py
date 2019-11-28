@@ -12,6 +12,7 @@ import logging
 import socket
 import ssl
 from time import sleep
+from typing import List
 
 from .exceptions import ShangSockError
 
@@ -30,12 +31,12 @@ class ShangSock:
             timeout:  The timeout for the socket
 
         """
-        self.sock = None
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server = server
         self.port = port
         self.ssl = ssl_flag
         self.timeout = timeout
-        self.__receive_cache = []
+        self.__receive_cache: List[str] = []
 
     def connect(self) -> None:
         """Create socket and bind it to given server and port.
@@ -46,7 +47,6 @@ class ShangSock:
 
         """
         logger = logging.getLogger(__name__)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(self.timeout)
         logger.debug(f'Timeout set to {self.timeout}')
         logger.info(f'Attempting to bind socket to {self.server}:{self.port}')
@@ -160,10 +160,10 @@ class ShangSock:
             raise ShangSockError(error='Unexpected Disconnect')
 
         logger.debug('Data received, merging with cache and separating by CRLF')
-        data = bytes.decode(data, encoding='utf-8')
-        message = ''.join(self.__receive_cache)
-        message = ''.join([message, data]).partition('\r\n')
-        if message[1]:
+        decoded = bytes.decode(data, encoding='utf-8')
+        cache = ''.join(self.__receive_cache)
+        message = ''.join([cache, decoded]).partition('\r\n')
+        if message[1]:  # BUG: Probably fails with IndexError exception if there is no CRLF
             logger.debug('CRLF present, so a complete message is ready')
             logger.debug(f'Caching {message[2]}')
             self.__receive_cache = [message[2]]

@@ -6,14 +6,14 @@
 import configparser
 import logging
 import re
+from typing import List
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup  # type: ignore
 import requests
 import requests.exceptions
 
 from .apis import pixiv_tags
-from .exceptions import (
-    TitleError, RequestError, APIError)
+from .exceptions import (TitleError, RequestError, APIError)
 
 
 _PIXIV = re.compile(r'pixiv.*illust_id(\d+)')
@@ -37,13 +37,13 @@ def scrape(link: str, apis: configparser.ConfigParser) -> str:
 
     """
     logger = logging.getLogger(__name__)
-    message = None
+    message: List[str] = []
     logger.info(f'Beginning handling for {link}')
     try:
         response = get_response(link)
     except RequestError as inst:
         logger.error('There was an error making the request', exc_info=inst)
-        message = inst
+        message.append(str(inst))
     else:
         logger.info(f'Request successful for {link}')
         message = []
@@ -53,16 +53,15 @@ def scrape(link: str, apis: configparser.ConfigParser) -> str:
             except TitleError:
                 message.append('No title found for the linked page')
             try:
-                message.append(
-                    pixiv_tags(_PIXIV.search(link).group(1), apis['pixiv']))
+                message.append(pixiv_tags(_PIXIV.search(link).group(1), apis['pixiv']))
             except APIError:
                 message.append('Failed to fetch illustration tags')
             except AttributeError:
                 pass
         else:
             message.append(fetch_info(response))
-        message = '\n'.join(message)
-    return message
+        ret = '\n'.join(message)
+    return ret
 
 
 def get_response(link: str) -> requests.Response:
@@ -78,16 +77,15 @@ def get_response(link: str) -> requests.Response:
     logger = logging.getLogger(__name__)
     logger.info(f'Sending GET request to {link}')
     try:
-        response = requests.get(link, timeout=1, stream=True,
-                                headers={"Accept-Encoding": "deflate"})
+        response = requests.get(link, timeout=1, stream=True, headers={"Accept-Encoding": "deflate"})
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as inst:
-        raise RequestError(link=link, error=inst)
+        raise RequestError(link=link, error=str(inst))
     else:
         logger.info(f'Request completed, checking status')
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError as inst:
-            raise RequestError(link=link, error=inst)
+            raise RequestError(link=link, error=str(inst))
     logger.info(f'No errors in request, returning')
     return response
 
@@ -105,7 +103,7 @@ def fetch_title(response: requests.Response) -> str:
     logger = logging.getLogger(__name__)
     logger.info(f'Attempting to find page title for {response.url}')
     try:
-        title = BeautifulSoup(response.text, 'html.parser').title.string.strip().replace('\n', '')
+        title: str = BeautifulSoup(response.text, 'html.parser').title.string.strip().replace('\n', '')
     except AttributeError:
         logger.info(f'No page title present for {response.url}')
         raise TitleError(link=response.url, error='No title present')
@@ -135,7 +133,7 @@ def fetch_info(response: requests.Response) -> str:
     return ' '.join(message)
 
 
-def size_convert(size: int = 0) -> str:
+def size_convert(size: float = 0) -> str:
     """Convert a size in bytes to human readable format.
 
     Args:

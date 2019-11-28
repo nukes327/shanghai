@@ -16,7 +16,6 @@ TODO:
 import configparser
 import logging
 import re
-import time
 
 # import fuckit
 
@@ -42,18 +41,10 @@ _LINKS = re.compile(r"\bhttps?://[^. ]+\.[^. \t\n\r\f\v][^ \n\r]+")
 class Bot:
     """Main class to handle bot functionality."""
 
-    Channel = str
-    Command = str
-    Filename = str
-    Flag = bool
-    Message = str
-    Time = time.struct_time
-    User = str
-
     def __init__(self,
-                 config: Filename = 'config/shanghai.ini',
-                 chancoms: Filename = 'config/commands.ini',
-                 apis: Filename = 'config/apis.ini'):
+                 config:   str = 'config/shanghai.ini',
+                 chancoms: str = 'config/commands.ini',
+                 apis:     str = 'config/apis.ini'):
         """Initialize bot.
 
         Args:
@@ -93,7 +84,7 @@ class Bot:
             default['server'], default.getint('port'), default.getboolean('ssl'))
         self.connect()
 
-    def connect(self):
+    def connect(self) -> None:
         """Connect to and send necessary information to IRC server per protocol.
 
         Notes:
@@ -152,7 +143,7 @@ class Bot:
                     logger.debug('Server sent an unexpected message')
         logger.info('Server authentication completed')
 
-    def join(self, channel: str = None):
+    def join(self, channel: str) -> None:
         """Join channel.
 
         Args:
@@ -163,7 +154,7 @@ class Bot:
         logger.info(f'Joining channel {channel}')
         self.irc.send(f'JOIN {channel}\r\n')
 
-    def quit(self):
+    def quit(self) -> None:
         """Quit server and stop bot."""
         logger = logging.getLogger(__name__)
         logger.info('Sending QUIT message')
@@ -172,7 +163,7 @@ class Bot:
         logger.info('Halting execution')
         exit()
 
-    def send(self, message: str = None, channel: str = None):
+    def send(self, message: str, channel: str) -> None:
         """Send message to channel.
 
         Args:

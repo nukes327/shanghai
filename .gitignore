@@ -3,4 +3,5 @@ __pycache__
 *.log
 *.ini
 *.swp
+.mypy_cache/
 deprecated/

@@ -3,13 +3,15 @@
 
 """Contains the exceptions for the Shanghai bot."""
 
+from typing import Optional
+
 
 class ShanghaiError(Exception):
     """Base shanghai exception class."""
 
     def __init__(self, *,
-                 error: str = None,
-                 message: str = None):
+                 error: str,
+                 message: Optional[str] = None):
         """Initialize ShanghaiError class.
 
         Args:
@@ -27,8 +29,8 @@ class ClearanceError(ShanghaiError):
     """Raise for clearance violations."""
 
     def __init__(self, *,
-                 user: str = None,
-                 func: str = None):
+                 user: str,
+                 func: str):
         """Initialize ClearanceError class.
 
         Args:
@@ -46,7 +48,7 @@ class LinkScanError(ShanghaiError):
     """Base link scanning exception class."""
 
     def __init__(self, *,
-                 error: str = None):
+                 error: str):
         """Initialize LinkScanError class.
 
         Args:
@@ -61,8 +63,8 @@ class TitleError(LinkScanError):
     """Raise for exception in fetching page title."""
 
     def __init__(self, *,
-                 link: str = None,
-                 error: str = None):
+                 link:  Optional[str] = None,
+                 error: str):
         """Initialize TitleError class.
 
         Args:
@@ -79,8 +81,8 @@ class RequestError(LinkScanError):
     """Raise for exception in GET request."""
 
     def __init__(self, *,
-                 link: str = None,
-                 error: str = None):
+                 link:  Optional[str] = None,
+                 error: str):
         """Initialize RequestError class.
 
         Args:
@@ -97,7 +99,7 @@ class APIError(LinkScanError):
     """Raise for exception with an API."""
 
     def __init__(self, *,
-                 error: str = None):
+                 error: str):
         """Initialize APIError class.
 
         Args:
@@ -112,7 +114,7 @@ class ShangSockError(ShanghaiError):
     """Raise for exception with socket."""
 
     def __init__(self, *,
-                 error: str = None):
+                 error: str):
         """Initialize ShangSockError class.
 
         Args:
