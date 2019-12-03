@@ -38,7 +38,12 @@ def init_logging() -> None:
 
 
 def logging_config_recovery(issue: KeyError) -> None:
-    """Recovery checks and actions for accessing the logging configuration."""
+    """Recovery checks and actions for accessing the logging configuration.
+
+    Args:
+        issue: exception with additional info on why config load failed
+
+    """
     print(f'There was an error reading the logging config: {issue}',
           'Proceding with recovery',
           sep='\n', file=sys.stderr)
@@ -62,7 +67,12 @@ def logging_config_recovery(issue: KeyError) -> None:
 
 
 def logging_logfile_recovery(issue: FileNotFoundError) -> None:
-    """Recovery checks and actions for accessing the logfile."""
+    """Recovery checks and actions for accessing the logfile.
+
+    Args:
+        issue: exception with additional info on why logfile needs recovery
+
+    """
     print(f'There was an error locating the log file or directory: {issue}',
           file=sys.stderr)
     try:
@@ -75,7 +85,14 @@ def logging_logfile_recovery(issue: FileNotFoundError) -> None:
 
 
 def create_logging_config() -> None:
-    """Generate a standard logging config file."""
+    """Generate a standard logging config file.
+
+    Notes:
+        This creates a logger config that results in full DEBUG logging being
+        enabled to stdout. This should probably be changed eventually, but
+        for now should be fine.
+
+    """
     config = configparser.ConfigParser()
     config['loggers'] = {'keys': 'root'}
     config['handlers'] = {'keys': 'systemFileHandler, systemStreamHandler, errorFileHandler'}
@@ -135,13 +152,12 @@ def main() -> None:
     """Initialize and run bot.
 
     Notes:
-        While this does check for presence of the necessary inis,
-        it does not check for syntactical validity of any of the
-        configs other than the logging config, as it is actually
-        loaded right away
-        This may be changed later to load the config parsers now,
-        and init the bot with those rather than the bot loading the
-        configs itself later
+        While this does check for presence of the necessary inis, it does not
+        check for syntactical validity of any of the configs other than the
+        logging config, as it is actually loaded right away.
+
+        This may be changed later to load the config parsers now and initialize
+        the bot with those rather than the bot loading the configs itself later
 
     """
     init_logging()

@@ -74,8 +74,8 @@ class ShangSock:
 
         Args:
             delay:      Initial delay in seconds before attempting to reconnect
-            increasing: Whether or not the function should increase the
-                        delay every failed connection attempt
+            increasing: Whether or not the function should increase the delay
+                        after every failed connection attempt
 
         """
         logger = logging.getLogger(__name__)
@@ -94,8 +94,8 @@ class ShangSock:
         """Unbind socket from server.
 
         Notes:
-            As with other methods in this class, IRC protocol should
-            be handled by the user before calling these methods.
+            As with other methods in this class, IRC protocol should be handled
+            by the user before calling these methods.
 
         """
         logging.getLogger(__name__).info('Shutting down socket')
@@ -128,9 +128,13 @@ class ShangSock:
             or an empty string if there is nothing to receive
 
         Notes:
-            Any excess is cached to be handled at next call
-            Fully delimited excess will be returned at next call without recving from the socket
-            Incomplete excess will be returned after more data is recv'd to complete it
+            Any remaining data after forming and returning a message from
+            received data is cached to be processed next time the method is called.
+
+            If there is a cache present, it will be checked first for a complete
+            message to be returned, in which case it will be returned without
+            receiving more data from the socket. Otherwise, the incomplete data
+            will form the beginning of the string built from received data.
 
         """
         logger = logging.getLogger(__name__)

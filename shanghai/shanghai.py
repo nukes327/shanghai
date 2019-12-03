@@ -92,6 +92,9 @@ class Bot:
             It'll be changed when I've got a proper scanner/parser for IRC ABNF
             implemented and working
 
+        Todo:
+            Implement parsing grammar with Lark or PLY, stop using regex for this
+
         """
         logger = logging.getLogger(__name__)
         default = self.config['DEFAULT']
@@ -149,15 +152,40 @@ class Bot:
         Args:
             channel: Channel bot will attempt to join
 
+        Todo:
+            Specification includes KEY parameter for locked channels
+
         """
         logger = logging.getLogger(__name__)
         logger.info(f'Joining channel {channel}')
         self.irc.send(f'JOIN {channel}\r\n')
 
-    def quit(self) -> None:
-        """Quit server and stop bot."""
+    def part(self, channel: str) -> None:
+        """Leave channel.
+
+        Args:
+            channel: Channel bot will leave
+
+        Todo:
+            Specification includes part message
+
+        """
         logger = logging.getLogger(__name__)
-        logger.info('Sending QUIT message')
+        logger.info(f'Leaving channel {channel}')
+        self.irc.send(f'PART {channel}\r\n')
+
+    def quit(self) -> None:
+        """Quit server and stop bot.
+
+        Notes:
+            This does not automatically leave any currently joined channels
+
+        Todo:
+            Specification includes quit message
+
+        """
+        logger = logging.getLogger(__name__)
+        logger.info('Quitting server')
         self.irc.send('QUIT\r\n')
         self.irc.disconnect()
         logger.info('Halting execution')

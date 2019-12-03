@@ -24,16 +24,21 @@ def scrape(link: str, apis: configparser.ConfigParser) -> str:
 
     Args:
         link: The link to be scanned
-        apis: A config parser with relevant information for
-              api usage (usernames and passwords mostly)
+        apis: A configparser object linked to a file containing all required
+              information for API usage. The file is mostly auth info.
 
     Returns:
         A string with info relating to the link for the bot to use
 
     Notes:
-        The apis arg is like to change when I've figured out
-        a good way to pass a dictionary rather than the whole
-        honkin parser
+        The file containing API-pertinent information is detailed in <TODO>
+
+    Todo:
+        There may be a nicer way to handle API info than passing a configparser
+        object, and this should be looked in to, a dictionary may be the answer
+        but I need to do some experimentation
+
+        The config file itself also needs to be documented somewhere eventually
 
     """
     logger = logging.getLogger(__name__)
