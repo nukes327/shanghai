@@ -9,9 +9,7 @@ from typing import Optional
 class ShanghaiError(Exception):
     """Base shanghai exception class."""
 
-    def __init__(self, *,
-                 error: str,
-                 message: Optional[str] = None):
+    def __init__(self, *, error: str, message: Optional[str] = None):
         """Initialize ShanghaiError class.
 
         Args:
@@ -20,7 +18,7 @@ class ShanghaiError(Exception):
 
         """
         if message is None:
-            message = f'Shanghai encountered an error - {error}'
+            message = f"Shanghai encountered an error - {error}"
         super(ShanghaiError, self).__init__(message)
         self.error = error
 
@@ -28,9 +26,7 @@ class ShanghaiError(Exception):
 class ClearanceError(ShanghaiError):
     """Raise for clearance violations."""
 
-    def __init__(self, *,
-                 user: str,
-                 func: str):
+    def __init__(self, *, user: str, func: str):
         """Initialize ClearanceError class.
 
         Args:
@@ -38,8 +34,7 @@ class ClearanceError(ShanghaiError):
             func: command that user attempted to execute
 
         """
-        super(ClearanceError, self).__init__(
-            error=f'ClearanceError - User: {user}, Command: {func}')
+        super(ClearanceError, self).__init__(error=f"ClearanceError - User: {user}, Command: {func}")
         self.user = user
         self.func = func
 
@@ -47,24 +42,21 @@ class ClearanceError(ShanghaiError):
 class LinkScanError(ShanghaiError):
     """Base link scanning exception class."""
 
-    def __init__(self, *,
-                 error: str):
+    def __init__(self, *, error: str):
         """Initialize LinkScanError class.
 
         Args:
             error: description of error that occurred
 
         """
-        super(LinkScanError, self).__init__(error=f'LinkScanError - {error}')
+        super(LinkScanError, self).__init__(error=f"LinkScanError - {error}")
         self.error = error
 
 
 class TitleError(LinkScanError):
     """Raise for exception in fetching page title."""
 
-    def __init__(self, *,
-                 link:  Optional[str] = None,
-                 error: str):
+    def __init__(self, *, link: Optional[str] = None, error: str):
         """Initialize TitleError class.
 
         Args:
@@ -72,7 +64,7 @@ class TitleError(LinkScanError):
             error: reason title fetch failed
 
         """
-        super(TitleError, self).__init__(error=f'Failed to get title for {link}: {error}')
+        super(TitleError, self).__init__(error=f"Failed to get title for {link}: {error}")
         self.link = link
         self.error = error
 
@@ -80,9 +72,7 @@ class TitleError(LinkScanError):
 class RequestError(LinkScanError):
     """Raise for exception in GET request."""
 
-    def __init__(self, *,
-                 link:  Optional[str] = None,
-                 error: str):
+    def __init__(self, *, link: Optional[str] = None, error: str):
         """Initialize RequestError class.
 
         Args:
@@ -90,7 +80,7 @@ class RequestError(LinkScanError):
             error: reason GET failed
 
         """
-        super(RequestError, self).__init__(error=f'Get request failed for {link}: {error}')
+        super(RequestError, self).__init__(error=f"Get request failed for {link}: {error}")
         self.link = link
         self.error = error
 
@@ -98,28 +88,26 @@ class RequestError(LinkScanError):
 class APIError(LinkScanError):
     """Raise for exception with an API."""
 
-    def __init__(self, *,
-                 error: str):
+    def __init__(self, *, error: str):
         """Initialize APIError class.
 
         Args:
             error: exception that occurred with API
 
         """
-        super(APIError, self).__init__(error=f'Problem with an API: {error}')
+        super(APIError, self).__init__(error=f"Problem with an API: {error}")
         self.error = error
 
 
 class ShangSockError(ShanghaiError):
     """Raise for exception with socket."""
 
-    def __init__(self, *,
-                 error: str):
+    def __init__(self, *, error: str):
         """Initialize ShangSockError class.
 
         Args:
             error: exception that occurred with socket
 
         """
-        super(ShangSockError, self).__init__(error=f'ShangSockError - {error}')
+        super(ShangSockError, self).__init__(error=f"ShangSockError - {error}")
         self.error = error
